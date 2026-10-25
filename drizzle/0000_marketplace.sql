@@ -1,0 +1,7 @@
+CREATE TABLE learners (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL, postcode TEXT NOT NULL, transmission TEXT NOT NULL DEFAULT 'Any', experience TEXT NOT NULL DEFAULT 'New learner');
+CREATE TABLE instructors (id TEXT PRIMARY KEY, owner_id TEXT, name TEXT NOT NULL, title TEXT NOT NULL, transmission TEXT NOT NULL, price INTEGER NOT NULL, experience INTEGER NOT NULL, languages TEXT NOT NULL, area TEXT NOT NULL, districts TEXT NOT NULL, photo TEXT NOT NULL, vehicle TEXT NOT NULL, bio TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', demo INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE slots (id TEXT PRIMARY KEY, instructor_id TEXT NOT NULL REFERENCES instructors(id), start TEXT NOT NULL, end TEXT NOT NULL, blocked INTEGER NOT NULL DEFAULT 0, UNIQUE(instructor_id,start));
+CREATE TABLE bookings (id TEXT PRIMARY KEY, learner_id TEXT NOT NULL REFERENCES learners(id), slot_id TEXT NOT NULL REFERENCES slots(id), postcode TEXT NOT NULL, duration INTEGER NOT NULL, total INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'confirmed', created TEXT NOT NULL);
+CREATE UNIQUE INDEX one_active_booking_per_slot ON bookings(slot_id) WHERE status = 'confirmed';
+CREATE TABLE waiting_list (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, postcode TEXT NOT NULL, transmission TEXT NOT NULL, day TEXT NOT NULL, period TEXT NOT NULL, created TEXT NOT NULL);
+CREATE TABLE searches (id TEXT PRIMARY KEY, postcode TEXT NOT NULL, matches INTEGER NOT NULL, created TEXT NOT NULL);

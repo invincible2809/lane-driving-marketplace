@@ -1,0 +1,10 @@
+import {readFileSync,writeFileSync,mkdirSync,cpSync,readdirSync} from 'node:fs';
+mkdirSync('dist/server',{recursive:true});mkdirSync('dist/.openai',{recursive:true});
+let api=readFileSync('api.mjs','utf8').replace("import {seed} from './data.mjs';",'').replaceAll('export ','');
+let data=readFileSync('data.mjs','utf8').replaceAll('export ','');
+const binaryAssets=Object.fromEntries(readdirSync('public/assets').map(f=>['/assets/'+f,readFileSync('public/assets/'+f).toString('base64')]));
+const assets=Object.fromEntries(['index.html','style.css','app.js'].map(x=>['/'+(x==='index.html'?'':x),readFileSync('public/'+x,'utf8')]));
+writeFileSync('dist/server/index.js',data+'\n'+api+'\nconst binaryAssets='+JSON.stringify(binaryAssets)+';\nconst assets='+JSON.stringify(assets)+`;\nexport default { async fetch(request,env) {const path=new URL(request.url).pathname;if(path.startsWith('/api/')){if(!env.DB)return Response.json({error:'Database binding is not configured.'},{status:503});return api(request,env.DB,env);}if(binaryAssets[path])return new Response(Uint8Array.from(atob(binaryAssets[path]),c=>c.charCodeAt(0)),{headers:{'Content-Type':path.endsWith('.jpg')?'image/jpeg':'font/ttf','Cache-Control':'public,max-age=86400'}});if(assets[path]!==undefined)return new Response(assets[path],{headers:{'Content-Type':path.endsWith('.css')?'text/css':path.endsWith('.js')?'text/javascript':'text/html; charset=utf-8','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin'}});return new Response('Not found',{status:404});}};`);
+cpSync('.openai/hosting.json','dist/.openai/hosting.json');cpSync('drizzle','dist/drizzle',{recursive:true});
+writeFileSync('dist/server/wrangler.json',JSON.stringify({name:'lane',main:'index.js',compatibility_date:'2026-10-01',d1_databases:[{binding:'DB',database_name:'lane',database_id:'local',migrations_dir:'../drizzle'}]},null,2));
+console.log('Built full-stack Worker with embedded assets and D1 migrations.');
