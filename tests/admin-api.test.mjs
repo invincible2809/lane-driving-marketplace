@@ -13,7 +13,7 @@ function client(db, id, env = {}) {
   return async (path, method = 'GET', body) => {
     const headers = new Headers({'Content-Type': 'application/json'});
     if (id) { headers.set('oai-authenticated-user-id', id); headers.set('oai-authenticated-user-email', id + '@test.local'); }
-    const r = await handle(new Request('http://localhost/api/' + path, {method, headers, body: body ? JSON.stringify(body) : undefined}), db, {APP_URL: 'http://localhost', ADMIN_EMAIL: 'admin@test.local', TRUST_PLATFORM_IDENTITY: 'true', ...env}, noAssets);
+    const r = await handle(new Request('http://localhost/api/' + path, {method, headers, body: body ? JSON.stringify(body) : undefined}), db, {APP_URL: 'http://localhost', ADMIN_EMAIL: 'admin@test.local', TRUST_PLATFORM_IDENTITY: 'true', OWNER_EMAILS: id + '@test.local', ...env}, noAssets);
     return {status: r.status, data: await r.json()};
   };
 }
@@ -35,6 +35,19 @@ async function link(db, instructor, learnerId, userId) {
   return {client: client(db, userId), token};
 }
 
+test('only a listed owner email can create the workspace; none listed means nobody can', async () => {
+  const db = database();
+  try {
+    const stranger = client(db, 'stranger', {OWNER_EMAILS: 'owner@test.local'});
+    const denied = await stranger('w/onboarding', 'POST', onboarding);
+    assert.equal(denied.status, 403);
+    assert.equal(denied.data.code, 'not_owner');
+    const noneListed = client(db, 'owner', {OWNER_EMAILS: ''});
+    assert.equal((await noneListed('w/onboarding', 'POST', onboarding)).status, 403);
+    assert.equal((await db.prepare('SELECT count(*) n FROM workspaces').first()).n, 0);
+    assert.equal((await client(db, 'owner', {OWNER_EMAILS: 'Owner@Test.local'})('w/onboarding', 'POST', onboarding)).status, 201);
+  } finally { db.close(); }
+});
 test('onboarding validation, ownership and private workspaces', async () => {
   const db = database();
   try {

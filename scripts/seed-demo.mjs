@@ -8,7 +8,7 @@ import {handle} from '../app.mjs';
 import {zonedParts, addDays} from '../lib/time.mjs';
 mkdirSync('.data', {recursive: true});
 const db = database(process.env.DATABASE_PATH || '.data/lane.sqlite');
-const env = {TRUST_PLATFORM_IDENTITY: 'true', APP_URL: 'http://127.0.0.1:5173'};
+const env = {TRUST_PLATFORM_IDENTITY: 'true', APP_URL: 'http://127.0.0.1:5173', OWNER_EMAILS: 'preview@lane.test'};
 const as = (id, email) => async (path, method = 'GET', body) => {
   const r = await handle(new Request('http://127.0.0.1:5173/api/' + path, {method, headers: {'Content-Type': 'application/json', 'oai-authenticated-user-id': id, 'oai-authenticated-user-email': email}, body: body ? JSON.stringify(body) : undefined}), db, env, async () => null);
   const data = await r.json();

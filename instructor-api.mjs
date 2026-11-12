@@ -281,9 +281,10 @@ export async function instructorApi(request, db, env = {}) {
     requireUser();
     await rateLimit(db, 'onboard:' + uid, 20, HOUR, now);
     if (await ownWorkspace()) fail(409, 'Your workspace is already set up. Change details in Settings.');
-    // On a single-business deployment only the listed owner emails may create the workspace.
+    // Fail closed: only the listed owner emails may create the workspace. With none configured nobody can,
+    // so a stranger cannot take the slot and make siteWorkspace() ambiguous.
     const owners = String(env.OWNER_EMAILS || '').toLowerCase().split(',').map(x => x.trim()).filter(Boolean);
-    if (owners.length && !owners.includes(email)) fail(403, 'Only the driving school owner can set up this workspace.', {code: 'not_owner'});
+    if (!owners.includes(email)) fail(403, 'Only the driving school owner can set up this workspace.', {code: 'not_owner'});
     const b = await readBody(request);
     const s = settingsInput({timezone: DEFAULT_TIME_ZONE, slot_step_minutes: 30, auto_confirm: false, reminder_offsets: '48,24', service_area: '', contact_email: email, ...b}, false);
     const hours = hoursInput(b.working_hours || []);

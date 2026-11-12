@@ -53,7 +53,7 @@ npm run build     # dist/server/index.js (Cloudflare Worker) + wrangler.json + m
 
 1. Google Cloud Console → create a project → *Google Auth Platform* / *OAuth consent screen*: app name "SRK Driving School", support email, authorised domain `srkdrivingschool.co.uk`, scopes `openid`, `email`, `profile`. Publish the app (these are non-sensitive scopes).
 2. *Credentials → Create OAuth client ID → Web application*. Authorised redirect URI: `https://srkdrivingschool.co.uk/auth/google/callback` (must equal `APP_URL` + `/auth/google/callback`).
-3. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (as a secret), `APP_URL` and `OWNER_EMAILS` (the instructor's Google address).
+3. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (as a secret), `APP_URL` and `OWNER_EMAILS` (the instructor's Google address). Until `OWNER_EMAILS` lists an address, nobody can create the workspace.
 4. The instructor signs in at `/app` and completes setup. Learners sign in at `/account`; a learner whose Google email matches exactly one learner record is linked automatically. Otherwise they can send an enquiry, and the instructor links them with **Add as learner**, or sends an invitation link.
 
 ## Deploying (Cloudflare Workers + D1)
