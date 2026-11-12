@@ -167,3 +167,24 @@ summary{cursor:pointer}
  }
 }
 @media (prefers-reduced-motion:reduce){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}}
+/* ---------- reviews ---------- */
+.reviews-head{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1.25rem}
+.reviews-head h2{flex-basis:100%;margin:0}
+.reviews-score{margin:0}
+.stars{width:7.5rem;height:1.5rem;flex:none}
+.stars .base{fill:#bdd3c8}.stars .gold{fill:#c77d00}
+.review-list{display:grid;gap:1rem;margin-top:1.25rem;align-items:start}
+.more-reviews{margin-top:1.25rem}.more-reviews summary{display:inline-flex}
+.review{margin:0;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:1rem}
+.review blockquote{margin:0}.review p{margin:0 0 .5rem;white-space:pre-line}.review figcaption{color:var(--muted);font-size:.875rem}
+@media (min-width:720px){.review-list{grid-template-columns:repeat(3,1fr)}}
+/* Scroll-driven: the stars fill and the quotes arrive as the band scrolls in. Without support everything simply shows. */
+@media (prefers-reduced-motion:no-preference){
+ @keyframes stars-fill{from{width:0}}
+ @supports (animation-timeline:view()){
+  .stars-clip{animation:stars-fill linear both;animation-timeline:view();animation-range:entry 20% entry 100%}
+  .review{animation:rise linear both;animation-timeline:view();animation-range:entry 0% entry 70%}
+  .review:nth-child(2){animation-range:entry 10% entry 80%}
+  .review:nth-child(3){animation-range:entry 20% entry 90%}
+ }
+}

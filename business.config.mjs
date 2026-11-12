@@ -18,6 +18,19 @@ export const business = {
   google_maps_url: 'https://maps.app.goo.gl/akLFXEkfsWg2fdSG9',
   // Shown with its date so it never goes stale silently. Update when it changes.
   google_rating: {score: '5.0', count: 13, as_of: 'November 2026'},
+  // Google reviews copied word for word from srkdrivingschool.co.uk (read 12 Nov 2026), the first three are featured, the rest follow newest first.
+  // Add only real quotes: {quote, name, when, source}. The testimonials on that site signed with initials are not used.
+  reviews: [
+    {quote: "Very good teacher, Shahrukh from SRK Driving School, had my driving test and got a pass with 0 errors. Would recommend!", name: "Jun Wu", when: "September 2026", source: 'Google'},
+    {quote: "Highly recommended! Today, I passed my driving test at Kingstanding Test Centre with Shahrukh from SRK Driving School. I tried a few instructors before, but Shahrukh taught me calmly and patiently. He explained everything clearly and in detail. Thank you so much!", name: "Rakesh Jose", when: "August 2026", source: 'Google'},
+    {quote: "Really recommend, great driving instructor as made me feel at ease straight away. Thanks for teaching me - got me the pass!!", name: "Isobel", when: "July 2026", source: 'Google'},
+    {quote: "I have passed my practical test with SRK driving school\nInstructor is always disciplined and calm\nVery easy and apt methods of teaching normal driving and manoeuvres\nInstructor explains every minute technique very nicely which others may neglect\nThis is my personal experience\nVery useful place to learn", name: "Renu Bala", when: "August 2026", source: 'Google'},
+    {quote: "Great teacher! Felt prepared and learnt a lot from our lessons. Plus, passed first time!", name: "Mike J Fellows", when: "August 2026", source: 'Google'},
+    {quote: "Thank you Sharruk for helping me pass my driving test today!", name: "GodBeFaithful", when: "July 2026", source: 'Google'},
+    {quote: "Hello everyone, I'm thrilled to share that I passed my driving test today! I would like to express my deepest gratitude to Sharukh for giving me ample time to experience the best driving experience possible. I highly recommend everyone visit SRK Driving School to experience their driving lessons.\nThank you sharukh", name: "Divya Kuntal", when: "July 2026", source: 'Google'},
+    {quote: "Thank you so much on helping me pass!\nYou have been an amazing teacher and have always been patient with me.", name: "Parsa Zahid", when: "July 2026", source: 'Google'},
+    {quote: "really good driving school, i passed first time! would definitely recommend!", name: "Anna", when: "July 2026", source: 'Google'}
+  ],
   social: {facebook: 'https://www.facebook.com/srkdrivingschool'},
   transmission: 'Automatic',
   instructor: {
