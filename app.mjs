@@ -15,10 +15,11 @@ export const SITE_ASSETS = {
   '/terms': 'site/terms.html',
   '/site/app.js': 'site/app.js',
   '/site/public.js': 'site/public.js',
-  '/site/app.css': 'site/app.css'
+  '/site/app.css': 'site/app.css',
+  '/site/public.css': 'site/public.css'
 };
 export const MARKETPLACE_ASSETS = {'/marketplace': 'index.html', '/style.css': 'style.css', '/app.js': 'app.js', '/operations.js': 'operations.js'};
-const TYPES = {html: 'text/html; charset=utf-8', css: 'text/css; charset=utf-8', js: 'text/javascript; charset=utf-8', jpg: 'image/jpeg', ttf: 'font/ttf'};
+const TYPES = {html: 'text/html; charset=utf-8', css: 'text/css; charset=utf-8', js: 'text/javascript; charset=utf-8', jpg: 'image/jpeg', ttf: 'font/ttf', woff2: 'font/woff2'};
 // The JSON-LD block on public pages is data, not script; its hash is not needed because browsers do not execute it.
 const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
@@ -50,7 +51,7 @@ export async function handle(request, db, env, readAsset) {
     const page = renderSitePage(env.BUSINESS || business, path, {user, query: url.searchParams, googleReady: googleConfigured(env)});
     if (page) return html(page);
   }
-  let file = SITE_ASSETS[path] || (path === '/' ? 'site/landing.html' : null);
+  let file = SITE_ASSETS[path] || (path === '/' ? 'site/landing.html' : null) || (/^\/site\/fonts\/[a-z0-9-]+\.woff2$/.test(path) ? path.slice(1) : null);
   if (!file && marketplaceEnabled(env)) file = MARKETPLACE_ASSETS[path] || (/^\/assets\/[a-z0-9-]+\.(jpg|ttf)$/.test(path) ? path.slice(1) : null);
   const body = file ? await readAsset(file) : null;
   if (body == null) return new Response('Not found', {status: 404, headers: {'Content-Type': 'text/plain', ...SECURITY_HEADERS}});
