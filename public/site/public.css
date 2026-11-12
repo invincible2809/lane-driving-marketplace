@@ -7,6 +7,7 @@
 .public{--display:"Archivo","Arial Narrow",system-ui,sans-serif;--body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;--radius:4px;font-family:var(--body);font-size:1.0625rem;line-height:1.6}
 .public input,.public select,.public textarea{caret-color:var(--brand);border-radius:4px}
 .public .btn{border-radius:4px}
+.public .btn.small{min-height:44px}
 
 /* Type: Archivo condensed and extra-bold for headlines, Atkinson Hyperlegible for reading. */
 .public h1,.public h2,.public h3{font-family:var(--display);font-stretch:75%;font-weight:800;letter-spacing:-.01em;word-spacing:.12em;line-height:1;text-wrap:balance}
@@ -21,17 +22,19 @@
 .public p{max-width:65ch}
 
 /* Header */
-.site-top{flex-wrap:wrap;gap:.5rem 1.5rem;padding:.75rem 1rem}
-.public .brand{font-family:var(--display);font-stretch:75%;font-weight:900;font-size:1.9rem;letter-spacing:-.01em;line-height:1}
+/* Bands run edge to edge; .wrap holds the 1100px column, and the header lines up with it. */
+.public main{max-width:none;margin:0;padding:0}
+.site-top{flex-wrap:wrap;gap:.5rem 1.5rem;padding:.75rem max(1rem,calc(50% - 550px + 1rem))}
+.public .brand{font-family:var(--display);font-stretch:75%;font-weight:900;font-size:1.9rem;letter-spacing:-.01em;line-height:1;padding:.4rem 0}
 .public .brand .small{font-family:var(--body);font-stretch:100%;font-weight:700;font-size:.95rem;letter-spacing:0;color:var(--ink)}
 .public .who{margin-left:auto;display:flex;align-items:center;gap:1rem;font-size:1rem;color:var(--ink)}
-.public .who .phone{color:var(--ink);font-weight:700;text-decoration:none}
+.public .who .phone{display:none;padding:.6rem 0;color:var(--ink);font-weight:700;text-decoration:none}
 .public .who .phone:hover{color:var(--brand)}
 .site-top .menu{width:100%;order:3;overflow-x:auto;-webkit-mask-image:linear-gradient(to right,#000 88%,transparent);mask-image:linear-gradient(to right,#000 88%,transparent)}
 .site-nav{display:flex;gap:.25rem 1.25rem;flex-wrap:nowrap;white-space:nowrap;align-items:center}
-.public .who .phone{display:none}
 .site-nav a{color:var(--ink);text-decoration:none;padding:.5rem 0;border-bottom:2px solid transparent;transition:border-color .15s,color .15s}
 .site-nav a:hover{border-bottom-color:var(--edge)}
+.site-nav a:focus-visible{outline-offset:-3px}
 .site-nav a[aria-current=page]{border-bottom-color:var(--brand);font-weight:700}
 .site-nav .account-link{color:var(--brand)}
 
@@ -54,11 +57,11 @@
 .hero-site{position:relative;overflow:hidden;background:var(--bg);border-bottom:1px solid var(--line)}
 .hero-site .wrap{padding:3rem 1rem 0}
 .hero-copy{position:relative;z-index:1;max-width:46rem}
-.hero-copy>p:first-child{margin:0 0 1.5rem}
+.hero-copy>p:first-child{margin:0 0 .9rem}
 .hero-copy .lead{font-size:1.25rem;max-width:34rem;color:#d4d4d4;margin:0 0 1.75rem}
 .hero-copy .row{gap:.75rem}
 .hero-copy .btn{min-height:52px;padding:.7rem 1.4rem;font-size:1.05rem}
-.rating{display:inline-flex;gap:.5rem;align-items:center;color:var(--ink);text-decoration:none}
+.rating{display:inline-flex;gap:.5rem;align-items:center;padding:.6rem 0;color:var(--ink);text-decoration:none}
 .rating strong{color:var(--brand)}
 .rating:hover span{text-decoration:underline}
 .star{width:1.1rem;height:1.1rem;fill:var(--brand);flex:none}
@@ -122,8 +125,8 @@
 .faq-item:first-of-type{border-top:1px solid var(--line)}
 .faq-item summary{display:flex;justify-content:space-between;gap:1rem;padding:1.1rem 0;font-size:1.15rem;font-weight:700;list-style:none}
 .faq-item summary::-webkit-details-marker{display:none}
-.faq-item summary::after{content:"+";font-size:1.5rem;line-height:1;color:var(--brand)}
-.faq-item[open] summary::after{content:"\2013"}
+.faq-item summary::after{content:"+";content:"+" / "";font-size:1.5rem;line-height:1;color:var(--brand)}
+.faq-item[open] summary::after{content:"\2013";content:"\2013" / ""}
 .faq-item p{margin:0 0 1.25rem;color:#d4d4d4}
 
 /* Areas, contact, footer */
@@ -134,10 +137,11 @@
 .contact-grid>*{min-width:0}
 .site-footer{background:#000;color:#d4d4d4;border-top:1px solid var(--line)}
 .site-footer a{color:var(--ink)}
+@media (pointer:coarse){.site-footer p a{display:inline-block;padding:.65rem 0}}
 .site-footer .wrap{display:grid;gap:2rem;padding-top:3rem;padding-bottom:3rem;font-size:.95rem}
+@media (min-width:1100px){.public .who .phone{display:inline}}
 @media (min-width:720px){
  .site-top .menu{width:auto;order:0;-webkit-mask-image:none;mask-image:none}
- .public .who .phone{display:inline}
  .wrap{padding-top:5rem;padding-bottom:5rem}
  .contact-grid{grid-template-columns:3fr 2fr}
  .site-footer .wrap{grid-template-columns:2fr 1fr 1fr;padding-top:3rem;padding-bottom:3rem}

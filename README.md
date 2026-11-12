@@ -40,6 +40,7 @@ npm run build     # dist/server/index.js (Cloudflare Worker) + wrangler.json + m
 - `instructor-api.mjs` — JSON API. Every query is scoped server-side to the signed-in owner's workspace or the learner's own record.
 - `auth.mjs` — Google OpenID Connect (authorisation code + PKCE, state, nonce, verified email) and server-side sessions (only a SHA-256 of the session token is stored; cookie is `HttpOnly`, `SameSite=Lax`, `Secure` + `__Host-` on HTTPS).
 - `app.mjs` — router shared by the Node dev server and the Worker. `worker-entry.mjs` adds the cron trigger.
+- `public/site/public.css` — the public website's styles; `app.css` holds the shared tokens and the portal. Fonts in `public/site/fonts` are Archivo and Atkinson Hyperlegible (SIL Open Font License), self-hosted because the content security policy only allows same-origin sources.
 - `drizzle/` — append-only SQL migrations (SQLite / Cloudflare D1).
 
 **Double-booking protection.** Database triggers refuse any lesson or slot hold that overlaps another active lesson, an unexpired hold, a blocked period, or the travel buffer — so two simultaneous requests cannot both succeed. Learners get a 10-minute hold while they review the details and cancellation terms; the accepted terms version is stored with the booking.
