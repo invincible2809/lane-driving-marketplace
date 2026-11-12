@@ -10,6 +10,7 @@ import {DEFAULT_SKILLS, STAGES, validateReportSkills, skillSummary} from './lib/
 import {newId, jobsForLessonEvent, enqueueStatement, cancelObsoleteStatement, processJobs, parseOffsets} from './lib/jobs.mjs';
 import {invitationEmail} from './lib/templates.mjs';
 import {createMailer} from './lib/mailer.mjs';
+import {siteWorkspace} from './auth.mjs';
 
 const HOLD_MS = 10 * MINUTE;
 const INVITE_MS = 7 * DAY;
@@ -180,10 +181,12 @@ export async function instructorApi(request, db, env = {}) {
     return json({ok: row?.ok === 1, database: 'ok', overdue_jobs: pending.n, time: new Date(now).toISOString()});
   }
   if (path === '/api/session' && method === 'GET') {
-    if (!user) return json({user: null});
+    const site = await siteWorkspace(db, env);
+    const siteInfo = {business_name: site?.business_name || null, google_sign_in: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET)};
+    if (!user) return json({user: null, site: siteInfo});
     const w = await ownWorkspace();
     const links = (await db.prepare(`SELECT r.id learner_id, w.id workspace_id, w.business_name FROM learner_records r JOIN workspaces w ON w.id=r.workspace_id WHERE r.user_id=? AND r.status='active'`).bind(uid).all()).results;
-    return json({user, platform_admin: platformAdmin, workspace: w ? {id: w.id, business_name: w.business_name, timezone: w.timezone} : null, learner_links: links, email_mode: createMailer(env).name});
+    return json({user, site: siteInfo, can_create_workspace: !String(env.OWNER_EMAILS || '').trim() || String(env.OWNER_EMAILS).toLowerCase().split(',').map(x => x.trim()).includes(email), platform_admin: platformAdmin, workspace: w ? {id: w.id, business_name: w.business_name, timezone: w.timezone} : null, learner_links: links, email_mode: createMailer(env).name});
   }
   // ================= invitations =================
   if (path === '/api/invitations/inspect' && method === 'POST') {
@@ -215,6 +218,36 @@ export async function instructorApi(request, db, env = {}) {
     await audit(inv.workspace_id, 'learner', 'invitation.accepted', 'learner', inv.learner_id).run();
     return json({learner_id: inv.learner_id});
   }
+  // ================= public website enquiries =================
+  if (path === '/api/site' && method === 'GET') {
+    const w = await siteWorkspace(db, env);
+    return json({ready: !!w, business_name: w?.business_name || null});
+  }
+  if (path === '/api/enquiries' && method === 'POST') {
+    await rateLimit(db, 'enquiry:' + ip, 5, HOUR, now);
+    const b = await readBody(request);
+    // Honeypot field and a minimum fill time quietly drop most automated spam.
+    if (str(b.website, 200) || (Number(b.started_ms) && now - Number(b.started_ms) < 2500)) return json({ok: true}, 201);
+    const w = await siteWorkspace(db, env);
+    if (!w) fail(503, 'Enquiries are not available yet. Please phone or email us instead.');
+    const e = {name: str(b.name, 80), email: str(b.email, 120).toLowerCase(), phone: str(b.phone, 30), area: str(b.area, 80), package: str(b.package, 80), experience: str(b.experience, 80), preferred_times: str(b.preferred_times, 300), message: str(b.message, 2000)};
+    if (e.name.length < 2) fail(400, 'Please enter your name.');
+    if (!e.email && !e.phone) fail(400, 'Please give an email address or phone number so we can reply.');
+    if (!emailOk(e.email)) fail(400, 'Please enter a valid email address.');
+    if (e.phone && !/^[+\d][\d\s()-]{6,}$/.test(e.phone)) fail(400, 'Please enter a valid phone number.');
+    if (b.contact_consent !== true) fail(400, 'Please confirm we may contact you about your enquiry.');
+    const id = newId();
+    const stmts = [db.prepare(`INSERT INTO enquiries (id,workspace_id,user_id,name,email,phone,area,package,experience,preferred_times,message,contact_consent,marketing_opt_in,created_ms,updated_ms) VALUES (?,?,?,?,?,?,?,?,?,?,?,1,?,?,?)`)
+      .bind(id, w.id, uid, e.name, e.email, e.phone, e.area, e.package, e.experience, e.preferred_times, e.message, b.marketing_opt_in ? 1 : 0, now, now)];
+    if (w.contact_email) {
+      const messageId = newId();
+      const text = `New enquiry from the website.\n\nName: ${e.name}\nPhone: ${e.phone || '—'}\nEmail: ${e.email || '—'}\nArea: ${e.area || '—'}\nInterested in: ${e.package || '—'}\nExperience: ${e.experience || '—'}\nPreferred times: ${e.preferred_times || '—'}\n\n${e.message}\n\nOpen your enquiries: ${(env.APP_URL || url.origin).replace(/\/$/, '')}/app#/enquiries`;
+      stmts.push(db.prepare('INSERT INTO messages (id,idempotency_key,workspace_id,template,recipient,subject,body,created_ms) VALUES (?,?,?,?,?,?,?,?)').bind(messageId, 'enquiry:' + id, w.id, 'enquiry_received', w.contact_email, `New enquiry: ${e.name}`, text, now));
+      stmts.push(enqueueStatement(db, {kind: 'send_message', key: 'enquiry:' + id, runAt: now, payload: {message_id: messageId}}, {workspaceId: w.id, now}));
+    }
+    await run(stmts);
+    return json({ok: true, id}, 201);
+  }
   // ================= jobs =================
   if (path === '/api/jobs/run' && method === 'POST') {
     const auth = request.headers.get('authorization') || '';
@@ -238,6 +271,9 @@ export async function instructorApi(request, db, env = {}) {
     requireUser();
     await rateLimit(db, 'onboard:' + uid, 20, HOUR, now);
     if (await ownWorkspace()) fail(409, 'Your workspace is already set up. Change details in Settings.');
+    // On a single-business deployment only the listed owner emails may create the workspace.
+    const owners = String(env.OWNER_EMAILS || '').toLowerCase().split(',').map(x => x.trim()).filter(Boolean);
+    if (owners.length && !owners.includes(email)) fail(403, 'Only the driving school owner can set up this workspace.', {code: 'not_owner'});
     const b = await readBody(request);
     const s = settingsInput({timezone: DEFAULT_TIME_ZONE, slot_step_minutes: 30, auto_confirm: false, reminder_offsets: '48,24', service_area: '', contact_email: email, ...b}, false);
     const hours = hoursInput(b.working_hours || []);
@@ -539,6 +575,38 @@ export async function instructorApi(request, db, env = {}) {
         }
       }
     }
+    // ----- enquiries -----
+    if (path === '/api/w/enquiries' && method === 'GET') {
+      const status = url.searchParams.get('status');
+      const rows = (await db.prepare(`SELECT e.*, (e.user_id IS NOT NULL) has_account FROM enquiries e WHERE e.workspace_id=? AND (? IS NULL OR e.status=?) ORDER BY e.created_ms DESC LIMIT 200`).bind(w.id, status || null, status || null).all()).results;
+      const counts = (await db.prepare('SELECT status, count(*) n FROM enquiries WHERE workspace_id=? GROUP BY status').bind(w.id).all()).results;
+      return json({enquiries: rows.map(r => ({...r, has_account: !!r.has_account, user_id: undefined})), counts});
+    }
+    if (seg[0] === 'enquiries' && seg[1]) {
+      const e = await db.prepare('SELECT * FROM enquiries WHERE id=? AND workspace_id=?').bind(seg[1], w.id).first();
+      if (!e) fail(404, 'Enquiry not found.');
+      if (!seg[2] && method === 'PATCH') {
+        const b = await readBody(request);
+        const status = b.status !== undefined ? oneOf(b.status, ['new', 'contacted', 'closed'], 'status') : e.status;
+        if (e.status === 'converted' && b.status !== undefined) fail(409, 'This enquiry is already linked to a learner record.');
+        await run([db.prepare('UPDATE enquiries SET status=?, instructor_note=?, updated_ms=? WHERE id=?').bind(status, b.instructor_note !== undefined ? str(b.instructor_note, 1000) : e.instructor_note, now, e.id), audit(w.id, 'instructor', 'enquiry.updated', 'enquiry', e.id, {status})]);
+        return json({ok: true});
+      }
+      if (seg[2] === 'convert' && method === 'POST') {
+        if (e.status === 'converted') fail(409, 'This enquiry is already linked to a learner record.');
+        const b = await readBody(request);
+        const transmission = oneOf(b.transmission || (w.transmission === 'both' ? 'manual' : w.transmission), ['manual', 'automatic'], 'transmission');
+        let linkUser = null;
+        if (e.user_id && !(await db.prepare('SELECT 1 FROM learner_records WHERE workspace_id=? AND user_id=?').bind(w.id, e.user_id).first()) && e.user_id !== w.owner_id) linkUser = e.user_id;
+        const id = newId();
+        await run([
+          db.prepare(`INSERT INTO learner_records (id,workspace_id,user_id,name,email,phone,transmission,availability_notes,marketing_opt_in,created_ms,updated_ms) VALUES (?,?,?,?,?,?,?,?,?,?,?)`).bind(id, w.id, linkUser, e.name, e.email, e.phone, transmission, e.preferred_times, e.marketing_opt_in, now, now),
+          db.prepare(`UPDATE enquiries SET status='converted', learner_id=?, updated_ms=? WHERE id=? AND status<>'converted'`).bind(id, now, e.id),
+          audit(w.id, 'instructor', 'enquiry.converted', 'enquiry', e.id, {learner_id: id, linked_account: !!linkUser})
+        ]);
+        return json({learner: learnerOut(await learnerIn(w, id))}, 201);
+      }
+    }
     // ----- skills -----
     if (path === '/api/w/skills' && method === 'GET') return json({skills: (await db.prepare('SELECT id, area, name, position, archived FROM skills WHERE workspace_id=? ORDER BY position').bind(w.id).all()).results, stages: STAGES});
     if (path === '/api/w/skills' && method === 'POST') {
@@ -577,7 +645,9 @@ export async function instructorApi(request, db, env = {}) {
         db.prepare(`SELECT count(*) n FROM lesson_reports WHERE workspace_id=? AND status='published'`).bind(w.id).first(),
         db.prepare(`SELECT count(*) n FROM learner_records WHERE workspace_id=? AND status='active'`).bind(w.id).first()
       ]);
-      return json({today, timezone: w.timezone, today_lessons: todayL.map(lessonOut), upcoming: upcoming.map(lessonOut), requests: requests.map(lessonOut), recent_cancellations: cancellations.map(lessonOut), unpaid, learners_without_booking: missing, reports_due: reportsDue.map(lessonOut), draft_reports: drafts, published_reports: published.n, active_learners: learners.n});
+      const enquiries = (await db.prepare(`SELECT id, name, package, created_ms FROM enquiries WHERE workspace_id=? AND status='new' ORDER BY created_ms DESC LIMIT 5`).bind(w.id).all()).results;
+      const newEnquiries = await db.prepare(`SELECT count(*) n FROM enquiries WHERE workspace_id=? AND status='new'`).bind(w.id).first();
+      return json({new_enquiries: {count: newEnquiries.n, latest: enquiries}, today, timezone: w.timezone, today_lessons: todayL.map(lessonOut), upcoming: upcoming.map(lessonOut), requests: requests.map(lessonOut), recent_cancellations: cancellations.map(lessonOut), unpaid, learners_without_booking: missing, reports_due: reportsDue.map(lessonOut), draft_reports: drafts, published_reports: published.n, active_learners: learners.n});
     }
     if (path === '/api/w/reports' && method === 'GET') {
       const from = url.searchParams.get('from'), to = url.searchParams.get('to');
@@ -621,7 +691,8 @@ export async function instructorApi(request, db, env = {}) {
           lessons: lessons.map(learnerLessonOut), reports, skills, progress: skillSummary(reports, skills)
         });
       }
-      return json({records: out});
+      const enquiries = (await db.prepare(`SELECT e.id, e.status, e.package, e.created_ms, w.business_name FROM enquiries e JOIN workspaces w ON w.id=e.workspace_id WHERE e.user_id=? ORDER BY e.created_ms DESC LIMIT 10`).bind(uid).all()).results;
+      return json({records: out, enquiries});
     }
     const r = await db.prepare('SELECT * FROM learner_records WHERE id=? AND user_id=?').bind(seg[0], uid).first();
     if (!r) fail(404, 'Not found.');
