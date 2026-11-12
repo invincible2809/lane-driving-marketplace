@@ -1,3 +1,4 @@
+import {fileURLToPath} from 'node:url';
 import {createServer} from 'node:http';
 import {readFileSync,existsSync,mkdirSync,readdirSync,writeFileSync,unlinkSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
@@ -35,7 +36,7 @@ function devSignInPage() {
  const items = Object.entries(DEV_USERS).map(([k, u]) => `<li><a href="/dev/sign-in?as=${k}">${u.label}</a> <small>${u.email}</small></li>`).join('');
  return `<!doctype html><html lang="en-GB"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Development sign-in</title><body style="font-family:system-ui;max-width:32rem;margin:2rem auto;padding:0 1rem"><h1>Development sign-in</h1><p>Local preview only. Hosted deployments use the platform's real sign-in.</p><ul style="line-height:2">${items}</ul></body></html>`;
 }
-if (process.argv[1] === new URL(import.meta.url).pathname) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
  const {handle} = await import('./app.mjs');
  const {processJobs} = await import('./lib/jobs.mjs');
  mkdirSync('.data', {recursive: true});
