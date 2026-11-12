@@ -6,7 +6,7 @@
     "dev": "node server.mjs",
     "seed": "node scripts/seed-demo.mjs",
     "build": "node build.mjs",
-    "test": "node --test tests/admin-domain.test.mjs tests/admin-api.test.mjs tests/auth-enquiries.test.mjs tests/marketplace.test.mjs tests/instructor-operations.test.mjs",
+    "test": "node --test tests/build.test.mjs tests/admin-domain.test.mjs tests/admin-api.test.mjs tests/auth-enquiries.test.mjs tests/marketplace.test.mjs tests/instructor-operations.test.mjs",
     "test:e2e": "node tests/e2e/journeys.mjs",
     "check": "node --check app.mjs && node --check instructor-api.mjs && node --check auth.mjs && node --check public/site/app.js && node --check public/site/public.js"
   }

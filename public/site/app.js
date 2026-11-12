@@ -57,6 +57,8 @@ function onSubmit(form, handler) {
 function signInHref(next) { return state.session?.site?.google_sign_in ? `/auth/google/start?next=${encodeURIComponent(next)}` : '/signin-with-chatgpt'; }
 function header() {
   const s = state.session, who = $('#who');
+  const name = s?.workspace?.business_name || s?.site?.business_name;
+  if (name) { const brand = $('.brand'); brand.textContent = name; brand.href = state.mode === 'learner' ? '/' : '#/'; }
   if (!s?.user) { who.innerHTML = `<a class="btn small" href="${signInHref(location.pathname)}">Sign in</a>`; return; }
   const other = state.mode === 'instructor' ? (s.learner_links?.length ? '<a href="/account">My lessons</a>' : '') : (s.workspace ? '<a href="/app">Instructor admin</a>' : '');
   who.innerHTML = `${other}<span class="sr">Signed in as </span><span>${esc(s.user.email)}</span><form method="post" action="/auth/logout"><button class="btn ghost small" type="submit">Sign out</button></form>`;
