@@ -13,7 +13,7 @@ function client(db, id, env = {}) {
   return async (path, method = 'GET', body) => {
     const headers = new Headers({'Content-Type': 'application/json'});
     if (id) { headers.set('oai-authenticated-user-id', id); headers.set('oai-authenticated-user-email', id + '@test.local'); }
-    const r = await handle(new Request('http://localhost/api/' + path, {method, headers, body: body ? JSON.stringify(body) : undefined}), db, {APP_URL: 'http://localhost', ADMIN_EMAIL: 'admin@test.local', ...env}, noAssets);
+    const r = await handle(new Request('http://localhost/api/' + path, {method, headers, body: body ? JSON.stringify(body) : undefined}), db, {APP_URL: 'http://localhost', ADMIN_EMAIL: 'admin@test.local', TRUST_PLATFORM_IDENTITY: 'true', ...env}, noAssets);
     return {status: r.status, data: await r.json()};
   };
 }

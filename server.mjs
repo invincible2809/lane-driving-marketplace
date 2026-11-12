@@ -42,7 +42,7 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
  const db = database(process.env.DATABASE_PATH || '.data/lane.sqlite');
  const bucket = localBucket();
  const port = Number(process.env.PORT || 5173);
- const env = {BUCKET: bucket, ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@lane.test', ADMIN_USER_ID: process.env.ADMIN_USER_ID || '', JOB_SECRET: process.env.JOB_SECRET || '', PRIVATE_JOB_ACCESS: 'false', MARKETPLACE_ENABLED: process.env.MARKETPLACE_ENABLED || 'false', EMAIL_MODE: process.env.EMAIL_MODE || 'preview', RESEND_API_KEY: process.env.RESEND_API_KEY || '', EMAIL_FROM: process.env.EMAIL_FROM || '', EMAIL_REDIRECT_TO: process.env.EMAIL_REDIRECT_TO || '', APP_URL: process.env.APP_URL || 'http://127.0.0.1:' + port};
+ const env = {BUCKET: bucket, ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@lane.test', ADMIN_USER_ID: process.env.ADMIN_USER_ID || '', JOB_SECRET: process.env.JOB_SECRET || '', PRIVATE_JOB_ACCESS: 'false', TRUST_PLATFORM_IDENTITY: 'true', SITE_MODE: process.env.SITE_MODE || 'business', OWNER_EMAILS: process.env.OWNER_EMAILS || '', GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '', GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '', SITE_WORKSPACE_ID: process.env.SITE_WORKSPACE_ID || '', MARKETPLACE_ENABLED: process.env.MARKETPLACE_ENABLED || 'false', EMAIL_MODE: process.env.EMAIL_MODE || 'preview', RESEND_API_KEY: process.env.RESEND_API_KEY || '', EMAIL_FROM: process.env.EMAIL_FROM || '', EMAIL_REDIRECT_TO: process.env.EMAIL_REDIRECT_TO || '', APP_URL: process.env.APP_URL || 'http://127.0.0.1:' + port};
  const readAsset = file => { const p = new URL('./public/' + file, import.meta.url); return existsSync(p) ? readFileSync(p) : null; };
  const jobTimer = setInterval(() => processJobs(db, env).catch(e => console.error('job runner error', e.message)), Number(process.env.JOB_INTERVAL_MS || 30000));
  jobTimer.unref?.();
@@ -50,7 +50,7 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
   try {
    const url = new URL(req.url, 'http://127.0.0.1:' + port);
    if (url.pathname === '/signin-with-chatgpt' || url.pathname === '/dev/sign-in' && !url.searchParams.get('as')) { res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'}); res.end(devSignInPage()); return; }
-   if (url.pathname === '/dev/sign-in') { const as = url.searchParams.get('as'); if (!DEV_USERS[as]) { res.writeHead(400); res.end('Unknown identity'); return; } res.writeHead(302, {'Set-Cookie': `lane_dev=${as}; HttpOnly; SameSite=Lax; Path=/`, Location: DEV_USERS[as].id === 'local-preview' || as.startsWith('instructor') ? '/app' : '/app#/learner'}); res.end(); return; }
+   if (url.pathname === '/dev/sign-in') { const as = url.searchParams.get('as'); if (!DEV_USERS[as]) { res.writeHead(400); res.end('Unknown identity'); return; } res.writeHead(302, {'Set-Cookie': `lane_dev=${as}; HttpOnly; SameSite=Lax; Path=/`, Location: as.startsWith('learner') ? '/account' : '/app'}); res.end(); return; }
    if (url.pathname === '/signout-with-chatgpt') { res.writeHead(302, {'Set-Cookie': 'lane_dev=; Max-Age=0; Path=/', Location: '/'}); res.end(); return; }
    const headers = new Headers();
    for (const [k, v] of Object.entries(req.headers)) if (v) headers.set(k, Array.isArray(v) ? v.join(', ') : v);

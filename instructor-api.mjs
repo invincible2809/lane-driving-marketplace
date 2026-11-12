@@ -224,8 +224,18 @@ export async function instructorApi(request, db, env = {}) {
     return json({ready: !!w, business_name: w?.business_name || null});
   }
   if (path === '/api/enquiries' && method === 'POST') {
+    // Plain HTML form posts (no JavaScript) are supported and answered with a redirect.
+    const formPost = (request.headers.get('content-type') || '').startsWith('application/x-www-form-urlencoded');
+    if (formPost) {
+      try { await submitEnquiry(Object.fromEntries(new URLSearchParams(await request.text()))); return new Response(null, {status: 303, headers: {Location: '/contact?sent=1'}}); }
+      catch (e) { if (!(e instanceof HttpError)) throw e; return new Response(null, {status: 303, headers: {Location: '/contact?error=' + encodeURIComponent(e.message)}}); }
+    }
+    return submitEnquiry(await readBody(request));
+  }
+  async function submitEnquiry(b) {
+    if (typeof b.contact_consent === 'string') b.contact_consent = b.contact_consent === 'true';
+    if (typeof b.marketing_opt_in === 'string') b.marketing_opt_in = b.marketing_opt_in === 'true';
     await rateLimit(db, 'enquiry:' + ip, 5, HOUR, now);
-    const b = await readBody(request);
     // Honeypot field and a minimum fill time quietly drop most automated spam.
     if (str(b.website, 200) || (Number(b.started_ms) && now - Number(b.started_ms) < 2500)) return json({ok: true}, 201);
     const w = await siteWorkspace(db, env);
