@@ -1,0 +1,158 @@
+/* Public website for SRK Driving School. Loaded after app.css, which supplies the colour tokens, buttons, forms and notices. */
+@font-face{font-family:"Archivo";src:url(/site/fonts/archivo-latin-wdth-normal.woff2) format("woff2");font-weight:100 900;font-stretch:62% 125%;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible";src:url(/site/fonts/atkinson-hyperlegible-latin-400-normal.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible";src:url(/site/fonts/atkinson-hyperlegible-latin-700-normal.woff2) format("woff2");font-weight:700;font-display:swap}
+:root{scrollbar-color:#555 var(--bg)}
+::selection{background:var(--brand);color:var(--brand-ink)}
+.public{--display:"Archivo","Arial Narrow",system-ui,sans-serif;--body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;--radius:4px;font-family:var(--body);font-size:1.0625rem;line-height:1.6}
+.public input,.public select,.public textarea{caret-color:var(--brand);border-radius:4px}
+.public .btn{border-radius:4px}
+.public .btn.small{min-height:44px}
+
+/* Type: Archivo condensed and extra-bold for headlines, Atkinson Hyperlegible for reading. */
+.public h1,.public h2,.public h3{font-family:var(--display);font-stretch:75%;font-weight:800;letter-spacing:-.01em;word-spacing:.12em;line-height:1;text-wrap:balance}
+.public h1{font-size:clamp(2.75rem,8vw,6rem);line-height:.95;letter-spacing:-.015em;margin:0 0 1.25rem}
+.public h2{font-size:clamp(2rem,4.5vw,3.25rem);margin:0 0 1rem}
+.public h3{font-size:1.4rem;margin:0 0 .4rem}
+.public .card{padding:1.5rem;margin-bottom:2rem}
+.public .card h2{font-size:1.75rem;margin-bottom:1rem}
+.public .contact-grid .card{margin-bottom:0}
+.public .card+.props{margin-top:2rem}
+.public .btn.secondary .star{margin-right:.15rem}
+.public p{max-width:65ch}
+
+/* Header */
+/* Bands run edge to edge; .wrap holds the 1100px column, and the header lines up with it. */
+.public main{max-width:none;margin:0;padding:0}
+.site-top{flex-wrap:wrap;gap:.5rem 1.5rem;padding:.75rem max(1rem,calc(50% - 550px + 1rem))}
+.public .brand{font-family:var(--display);font-stretch:75%;font-weight:900;font-size:1.9rem;letter-spacing:-.01em;line-height:1;padding:.4rem 0}
+.public .brand .small{font-family:var(--body);font-stretch:100%;font-weight:700;font-size:.95rem;letter-spacing:0;color:var(--ink)}
+.public .who{margin-left:auto;display:flex;align-items:center;gap:1rem;font-size:1rem;color:var(--ink)}
+.public .who .phone{display:none;padding:.6rem 0;color:var(--ink);font-weight:700;text-decoration:none}
+.public .who .phone:hover{color:var(--brand)}
+.site-top .menu{width:100%;order:3;overflow-x:auto;-webkit-mask-image:linear-gradient(to right,#000 88%,transparent);mask-image:linear-gradient(to right,#000 88%,transparent)}
+.site-nav{display:flex;gap:.25rem 1.25rem;flex-wrap:nowrap;white-space:nowrap;align-items:center}
+.site-nav a{color:var(--ink);text-decoration:none;padding:.5rem 0;border-bottom:2px solid transparent;transition:border-color .15s,color .15s}
+.site-nav a:hover{border-bottom-color:var(--edge)}
+.site-nav a:focus-visible{outline-offset:-3px}
+.site-nav a[aria-current=page]{border-bottom-color:var(--brand);font-weight:700}
+.site-nav .account-link{color:var(--brand)}
+
+/* Bands */
+.band{background:var(--bg);border-bottom:1px solid var(--line)}
+.wrap{max-width:1100px;margin:0 auto;padding:3.5rem 1rem}
+.band.alt{background:var(--brand);color:var(--brand-ink);border-bottom:0}
+.band.alt h2{font-size:clamp(2.5rem,6vw,4.5rem)}
+.band.alt .wrap{padding-top:3.5rem;padding-bottom:3.5rem}
+.band.alt p{margin-bottom:0}
+.band.alt .spread{align-items:center}
+.band.alt a{color:var(--brand-ink)}
+.band.alt :focus-visible{outline-color:var(--brand-ink)}
+.band.alt .btn:not(.secondary){background:var(--brand-ink);border-color:var(--brand-ink);color:var(--brand)}
+.band.alt .btn.secondary{background:transparent;border-color:var(--brand-ink);color:var(--brand-ink)}
+.band.alt .btn:not(.secondary):not([disabled]):hover{background:#262626;border-color:#262626}
+.band.alt .btn.secondary:not([disabled]):hover{background:var(--brand-ink);color:var(--brand)}
+
+/* Hero: the headline, and a road that pulls up and stops once. */
+.hero-site{position:relative;overflow:hidden;background:var(--bg);border-bottom:1px solid var(--line)}
+.hero-site .wrap{padding:3rem 1rem 0}
+.hero-copy{position:relative;z-index:1;max-width:46rem}
+.hero-copy>p:first-child{margin:0 0 .9rem}
+.hero-copy .lead{font-size:1.25rem;max-width:34rem;color:#d4d4d4;margin:0 0 1.75rem}
+.hero-copy .row{gap:.75rem}
+.hero-copy .btn{min-height:52px;padding:.7rem 1.4rem;font-size:1.05rem}
+.rating{display:inline-flex;gap:.5rem;align-items:center;padding:.6rem 0;color:var(--ink);text-decoration:none}
+.rating strong{color:var(--brand)}
+.rating:hover span{text-decoration:underline}
+.star{width:1.1rem;height:1.1rem;fill:var(--brand);flex:none}
+.road{position:relative;height:14rem;margin:1.5rem -1rem 0;overflow:hidden;perspective:420px;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 45%);mask-image:linear-gradient(to bottom,transparent 0,#000 45%)}
+.road-plane{position:absolute;left:50%;bottom:-4rem;width:38rem;height:34rem;margin-left:-19rem;transform-origin:50% 100%;transform:rotateX(62deg)}
+.road-plane .edge{position:absolute;top:0;bottom:0;width:10px;background:#454545}
+.road-plane .edge.l{left:14%}.road-plane .edge.r{right:14%}
+.road-plane .dashes{position:absolute;left:50%;width:26px;margin-left:-13px;top:-640px;bottom:0;background:repeating-linear-gradient(180deg,var(--brand) 0 64px,transparent 64px 128px)}
+@media (min-width:900px){
+ .hero-site .wrap{min-height:34rem;display:flex;align-items:center;padding:4.5rem 1rem}
+ .road{position:absolute;top:0;right:0;bottom:0;width:46%;height:auto;margin:0;perspective:560px}
+ .road-plane{bottom:-10rem;width:46rem;height:52rem;margin-left:-23rem}
+}
+
+/* Price board */
+.board{list-style:none;margin:2rem 0 0;padding:0;border-top:1px solid var(--line)}
+.plan{display:grid;gap:1rem 2rem;align-items:center;padding:1.5rem 0;border-bottom:1px solid var(--line)}
+.plan-name h3{margin:0}
+.plan-name p{margin:.25rem 0 0;color:var(--muted)}
+.plan-points{list-style:none;margin:0;padding:0;color:#d4d4d4}
+.plan-buy{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.price{font-family:var(--display);font-stretch:75%;font-weight:800;font-size:2.75rem;line-height:1;margin:0;color:var(--brand)}
+.plan.featured{margin:0 -1rem;padding-left:1rem;padding-right:1rem;background:var(--brand);color:var(--brand-ink);border-bottom-color:var(--brand)}
+.plan.featured .plan-name p,.plan.featured .plan-points{color:#2b2900}
+.plan.featured .price{color:var(--brand-ink)}
+.plan.featured .btn.secondary{border-color:var(--brand-ink);color:var(--brand-ink)}
+.plan.featured .btn.secondary:not([disabled]):hover{background:var(--brand-ink);color:var(--brand)}
+.plan.featured :focus-visible{outline-color:var(--brand-ink)}
+@media (min-width:900px){
+ .plan{grid-template-columns:minmax(0,1.1fr) minmax(0,1.6fr) minmax(0,15rem);padding-top:1.75rem;padding-bottom:1.75rem}
+ .plan-buy{justify-content:flex-end}
+}
+
+/* Short statements in columns, divided by a hairline. */
+.props{display:grid;gap:2rem}
+.props>div{border-top:1px solid var(--line);padding-top:1rem}
+.props p{margin:0;color:#d4d4d4}
+@media (min-width:720px){.props{grid-template-columns:repeat(3,1fr);gap:2.5rem}}
+
+/* Reviews */
+.reviews-head{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1.5rem;margin-bottom:2rem}
+.reviews-head h2{flex-basis:100%;margin:0}
+.reviews-score{margin:0}
+.stars{width:8.5rem;height:1.7rem;flex:none}
+.stars .base{fill:#3a3a3a}.stars .gold{fill:var(--brand)}
+.pull{margin:0 0 2.5rem;max-width:52rem}
+.pull blockquote,.review blockquote{margin:0}
+.pull p{font-size:clamp(1.6rem,3.2vw,2.35rem);font-weight:700;line-height:1.25;margin:0 0 1rem;max-width:none;text-wrap:balance}
+.pull figcaption,.review figcaption{color:var(--muted);font-size:.95rem}
+.pull figcaption strong,.review figcaption strong{color:var(--ink)}
+.review-list{display:grid;gap:1.75rem 2.5rem;align-items:start;margin-top:1rem}
+.review{margin:0;border-top:1px solid var(--line);padding-top:1rem}
+.review p{margin:0 0 .6rem;white-space:pre-line}
+.more-reviews{margin:1.75rem 0}
+.more-reviews summary{display:inline-flex;align-items:center;min-height:44px;padding:.3rem 1rem;border:1px solid var(--edge);border-radius:4px;font-weight:700;transition:border-color .15s,color .15s}
+.more-reviews summary:hover{border-color:var(--brand);color:var(--brand)}
+@media (min-width:720px){.review-list{grid-template-columns:repeat(2,1fr)}}
+
+/* Questions */
+.faq-item{border-bottom:1px solid var(--line)}
+.faq-item:first-of-type{border-top:1px solid var(--line)}
+.faq-item summary{display:flex;justify-content:space-between;gap:1rem;padding:1.1rem 0;font-size:1.15rem;font-weight:700;list-style:none}
+.faq-item summary::-webkit-details-marker{display:none}
+.faq-item summary::after{content:"+";content:"+" / "";font-size:1.5rem;line-height:1;color:var(--brand)}
+.faq-item[open] summary::after{content:"\2013";content:"\2013" / ""}
+.faq-item p{margin:0 0 1.25rem;color:#d4d4d4}
+
+/* Areas, contact, footer */
+.area-list{display:flex;flex-wrap:wrap;gap:.5rem;list-style:none;padding:0}
+.area-list li{background:var(--card);border:1px solid var(--line);border-radius:4px;padding:.4rem .9rem}
+.hp{position:absolute;left:-5000px;width:1px;height:1px;overflow:hidden}
+.contact-grid{display:grid;gap:1.5rem}
+.contact-grid>*{min-width:0}
+.site-footer{background:#000;color:#d4d4d4;border-top:1px solid var(--line)}
+.site-footer a{color:var(--ink)}
+@media (pointer:coarse){.site-footer p a{display:inline-block;padding:.65rem 0}}
+.site-footer .wrap{display:grid;gap:2rem;padding-top:3rem;padding-bottom:3rem;font-size:.95rem}
+@media (min-width:1100px){.public .who .phone{display:inline}}
+@media (min-width:720px){
+ .site-top .menu{width:auto;order:0;-webkit-mask-image:none;mask-image:none}
+ .wrap{padding-top:5rem;padding-bottom:5rem}
+ .contact-grid{grid-template-columns:3fr 2fr}
+ .site-footer .wrap{grid-template-columns:2fr 1fr 1fr;padding-top:3rem;padding-bottom:3rem}
+}
+
+/* Motion: one moment. The road's centre line runs toward you and slows to a stop; the stars fill as the reviews scroll in. */
+@media (prefers-reduced-motion:no-preference){
+ @keyframes pull-up{from{transform:translateY(-640px)}}
+ @keyframes stars-fill{from{width:0}}
+ .road-plane .dashes{animation:pull-up 2.8s cubic-bezier(.12,.6,.1,1) .15s backwards}
+ @supports (animation-timeline:view()){
+  .stars-clip{animation:stars-fill linear both;animation-timeline:view();animation-range:entry 20% entry 100%}
+ }
+}
