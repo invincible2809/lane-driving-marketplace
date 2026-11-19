@@ -157,8 +157,19 @@
  }
 }
 
-/* Test-day photo reel: a horizontal cinema film strip under the review heading. */
+/* Test-day photo reel: a horizontal cinema film strip. On phones it sits under the
+   review heading; on wider screens it takes the right half, beside the heading
+   and featured quote, with the other reviews running full width below. */
 .reviews-with-reel>.pass-reel{margin:0 0 2.5rem}
+@media (min-width:900px){
+ .reviews-with-reel{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:3rem;align-items:start}
+ .reviews-with-reel>*{grid-column:1 / -1}
+ .reviews-with-reel>.reviews-head{grid-column:1;grid-row:1}
+ .reviews-with-reel>.pull{grid-column:1;grid-row:2}
+ .reviews-with-reel>.pass-reel{grid-column:2;grid-row:1 / span 2;align-self:center;margin:0 0 2.5rem}
+ .reviews-with-reel .reel-frame{width:clamp(140px,13vw,175px);padding:22px 4px}
+ .reviews-with-reel .reel-track::before{top:6px}.reviews-with-reel .reel-track::after{bottom:6px}
+}
 .pass-reel{margin:0}
 .reel-window{position:relative;overflow:hidden;background:#000;border-radius:6px;box-shadow:0 0 0 1px var(--line)}
 /* Sprocket holes run the full length of the strip and move with it. */
