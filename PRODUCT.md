@@ -47,6 +47,7 @@ Built for one real school, SRK Driving School, and personal to it rather than a 
 
 - Confirmed by the owner (12 Nov 2026): the packages and prices (£40 single lesson, £380 block of 10, £760 intensive, £130 test day), the 5.0 Google rating from 13 reviews (shown with its "as of" date), and the office hours (Mon to Fri 09:30 to 19:00, Sat and Sun 09:00 to 14:00).
 - Real content: SRK contact details, areas covered and instructor bio in `business.config.mjs`.
+- 25 test-day pass photos copied from srkdrivingschool.co.uk (19 Nov 2026), resized and stripped of metadata, shown as a photo reel beside the reviews. Learner consent for each photo is assumed from their publication on the owner's site; confirm before launch.
 - Nine real Google reviews with names and dates, copied verbatim from the owner's own site (srkdrivingschool.co.uk) into `business.config.mjs`. The old site's initials-only testimonials are not used.
 - Absent, do not fabricate: pass rates, learners-passed counts (the old site's "500+ passed" and "98%" are unevidenced), case studies, press. `stats` is deliberately empty.
 - Verification report in `VALIDATION.md`: 35 passing tests and 28 browser checks; axe-core found no violations on the pages checked. Real Google sign-in, live email and production D1 are unverified.

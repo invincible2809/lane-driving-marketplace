@@ -85,7 +85,7 @@ async function route(request, db, env, readAsset) {
     const page = renderSitePage(env.BUSINESS || business, path, {user, query: url.searchParams, googleReady: googleConfigured(env), demo: demoEnabled(env)});
     if (page) return html(page);
   }
-  let file = SITE_ASSETS[path] || (path === '/' ? 'site/landing.html' : null) || (/^\/site\/fonts\/[a-z0-9-]+\.woff2$/.test(path) ? path.slice(1) : null) || (/^\/site\/brand\/[a-z0-9-]+\.(svg|png)$/.test(path) ? path.slice(1) : null) || (path === '/favicon.ico' ? 'site/brand/favicon-48.png' : null);
+  let file = SITE_ASSETS[path] || (path === '/' ? 'site/landing.html' : null) || (/^\/site\/fonts\/[a-z0-9-]+\.woff2$/.test(path) ? path.slice(1) : null) || (/^\/site\/brand\/[a-z0-9-]+\.(svg|png)$/.test(path) ? path.slice(1) : null) || (/^\/site\/passes\/pass-\d{2}\.jpg$/.test(path) ? path.slice(1) : null) || (path === '/favicon.ico' ? 'site/brand/favicon-48.png' : null);
   if (!file && marketplaceEnabled(env)) file = MARKETPLACE_ASSETS[path] || (/^\/assets\/[a-z0-9-]+\.(jpg|ttf)$/.test(path) ? path.slice(1) : null);
   const body = file ? await readAsset(file) : null;
   if (body == null) return new Response('Not found', {status: 404, headers: {'Content-Type': 'text/plain', ...SECURITY_HEADERS}});
