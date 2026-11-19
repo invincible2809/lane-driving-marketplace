@@ -35,6 +35,21 @@ npm run test:e2e  # Chromium journeys at 390×844; set AXE_PATH=/path/to/axe.min
 npm run build     # dist/server/index.js (Cloudflare Worker) + wrangler.json + migrations
 ```
 
+## Logo
+
+Files are in `public/site/brand/` (served at `/site/brand/...`):
+
+| File | Use |
+|---|---|
+| `srk-logo-on-dark.svg` | Website and app header (black background) |
+| `srk-logo-on-light.svg` | White backgrounds, letters, PDFs |
+| `srk-logo-black.svg` | One colour, for yellow backgrounds or single-colour print |
+| `srk-logo-stacked-on-dark.svg` / `-on-light.svg` | Square spaces: social profiles, posters |
+| `srk-mark.svg`, `favicon-32.png`, `favicon-48.png` | Browser tab icon (`/favicon.ico` serves the PNG) |
+| `srk-app-icon.svg`, `apple-touch-icon.png`, `icon-512.png` | Phone home-screen and app icons |
+
+The mark is a road running to the horizon with a dashed centre line, echoing the road on the home page; colours are the site's black `#0a0a0a` and yellow `#f9e615`. Lettering is Archivo (condensed, black weight) and Atkinson Hyperlegible, converted to outlines so the logo looks the same everywhere. Both fonts are under the SIL Open Font Licence. To change the logo, edit `scripts/brand/build-logo.py` and run it (`pip install fonttools brotli uharfbuzz`), then `node scripts/brand/render-icons.mjs` for the PNGs.
+
 ## Architecture
 
 - `lib/` — domain rules with no HTTP or database code: time zones and BST (`time.mjs`), availability and buffers (`availability.mjs`), lesson states and cancellation rules (`lessons.mjs`), progress (`progress.mjs`), durable jobs and reminders (`jobs.mjs`), email adapters (`mailer.mjs`), calendar adapter interface (`calendar.mjs`), email templates, public site renderer (`site.mjs`).

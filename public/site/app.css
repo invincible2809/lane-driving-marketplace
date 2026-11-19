@@ -125,3 +125,12 @@ summary{cursor:pointer}
 .demo-banner a{color:#1a1a1a;font-weight:700}
 .demo-signin{max-width:30rem;width:calc(100% - 2rem);margin:2rem auto}
 .demo-signin form{margin:0}.demo-signin .btn{width:100%}
+
+/* Logo */
+.brand-logo{display:inline-flex;align-items:center;line-height:0;padding:.25rem 0}
+.brand-logo img{display:block;height:32px;width:auto}
+.public .brand-logo img{height:34px}
+.demo-logo{display:block;height:40px;width:auto;margin-bottom:1rem}
+@media (max-width:599px){.who .who-email{display:none}}
+@media (max-width:359px){.brand-logo img,.public .brand-logo img{height:28px}}
+@media (min-width:720px){.brand-logo img{height:36px}.public .brand-logo img{height:38px}}

@@ -58,10 +58,10 @@ function signInHref(next) { return `/auth/sign-in?next=${encodeURIComponent(next
 function header() {
   const s = state.session, who = $('#who');
   const name = s?.workspace?.business_name || s?.site?.business_name;
-  if (name) { const brand = $('.brand'); brand.textContent = name; brand.href = state.mode === 'learner' ? '/' : '#/'; }
+  if (name) { const brand = $('.brand'); if (!brand.querySelector('img')) brand.textContent = name; brand.href = state.mode === 'learner' ? '/' : '#/'; }
   if (!s?.user) { who.innerHTML = `<a class="btn small" href="${signInHref(location.pathname)}">Sign in</a>`; return; }
   const other = state.mode === 'instructor' ? (s.learner_links?.length ? '<a href="/account">My lessons</a>' : '') : (s.workspace ? '<a href="/app">Instructor admin</a>' : '');
-  who.innerHTML = `${other}<span class="sr">Signed in as </span><span>${esc(s.user.email)}</span><form method="post" action="/auth/logout"><button class="btn ghost small" type="submit">Sign out</button></form>`;
+  who.innerHTML = `${other}<span class="who-email"><span class="sr">Signed in as </span>${esc(s.user.email)}</span><form method="post" action="/auth/logout"><button class="btn ghost small" type="submit">Sign out</button></form>`;
 }
 function setNav(name) { document.querySelectorAll('[data-nav]').forEach(a => a.dataset.nav === name ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')); }
 function route() {
