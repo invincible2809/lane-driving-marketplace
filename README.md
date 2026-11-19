@@ -14,7 +14,7 @@ The original learner marketplace is frozen behind `MARKETPLACE_ENABLED=true` and
 
 ## Run locally
 
-Requires Node.js 22.5+ (uses the built-in `node:sqlite`). No dependencies to install.
+Requires Node.js 22.5+ (the local server uses the built-in `node:sqlite`). Run `npm install` once (libSQL client and Vercel helpers, used for hosting).
 
 ```sh
 npm run seed      # demo workspace, learners, lessons, a shared report and two enquiries
@@ -28,7 +28,7 @@ Emails are in **preview mode** by default: nothing is sent; every email is visib
 ## Tests
 
 ```sh
-npm test          # 35 unit + integration tests (domain rules, API, auth, enquiries, build)
+npm test          # 36 unit + integration tests (domain rules, API, auth, enquiries, Vercel/libSQL, build)
 npm run check     # syntax check of entry points and browser scripts
 npm run test:e2e  # Chromium journeys at 390×844; set AXE_PATH=/path/to/axe.min.js for WCAG checks
 npm run build     # dist/server/index.js (Cloudflare Worker) + wrangler.json + migrations
@@ -56,25 +56,48 @@ npm run build     # dist/server/index.js (Cloudflare Worker) + wrangler.json + m
 3. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (as a secret), `APP_URL` and `OWNER_EMAILS` (the instructor's Google address). Until `OWNER_EMAILS` lists an address, nobody can create the workspace.
 4. The instructor signs in at `/app` and completes setup. Learners sign in at `/account`; a learner whose Google email matches exactly one learner record is linked automatically. Otherwise they can send an enquiry, and the instructor links them with **Add as learner**, or sends an invitation link.
 
-## Deploying (Cloudflare Workers + D1)
+## Quick demo on Vercel (no Google, no email setup)
 
-```sh
-npm run build
-npx wrangler d1 create lane                      # put the id into dist/server/wrangler.json
-npx wrangler d1 migrations apply lane --remote --config dist/server/wrangler.json
-npx wrangler secret put GOOGLE_CLIENT_SECRET --config dist/server/wrangler.json
-npx wrangler deploy --config dist/server/wrangler.json   # deploy to a workers.dev preview first
-```
+For showing the product, set **`DEMO_MODE=true`**. The site then:
+- offers one-click "Try as the instructor / learner" sign-in (no Google account or credentials needed);
+- creates sample data automatically on first visit, and the instructor dashboard has **Reset demo data**;
+- shows a "Demo site" banner on every page and tells search engines not to index it, so it never competes with the real srkdrivingschool.co.uk;
+- never sends email (messages are visible under Settings → Sent emails).
 
-Set the non-secret variables from `.env.example` in `wrangler.json` `vars` or the dashboard. The cron trigger (every minute) processes reminders and emails. Point `srkdrivingschool.co.uk` at the Worker only after the preview has been checked. Nothing has been deployed from this repository yet.
+Steps:
+1. Vercel → *Add New → Project* → import this repository (branch `claude/driving-instructor-admin-ripn2y`), Framework Preset **Other**.
+2. Project → *Storage* → *Marketplace* → **Turso Cloud** → create a free database and connect it (the site needs a hosted database because Vercel does not keep files).
+3. Project → *Settings → Environment Variables* → add `DEMO_MODE` = `true`.
+4. Deploy (or *Redeploy* after adding the database and variable). Open the `*.vercel.app` address.
 
-**Email:** set `EMAIL_MODE=resend`, `RESEND_API_KEY` (secret) and `EMAIL_FROM` on a verified domain. Use `EMAIL_REDIRECT_TO` to send everything to a test inbox first.
+The free Hobby plan is fine for a demo. Do not turn on demo mode for a site with real learner data: anyone can sign in as the instructor.
+
+## Deploying on Vercel
+
+You need: a GitHub account (this repo), a Vercel account, and a Turso database (hosted SQLite; added from Vercel's Marketplace). Vercel has no permanent disk, so the database must be hosted.
+
+> **Plan note:** Vercel's free Hobby plan is for non-commercial personal use. A business website such as SRK's should use the **Pro** plan. Check Vercel's current terms.
+
+1. **Import the project.** Vercel dashboard → *Add New → Project* → import `lane-driving-marketplace`, branch `claude/driving-instructor-admin-ripn2y` (or `main` after merging). Leave *Framework Preset* as **Other**. `vercel.json` already sets the install, build and output settings.
+2. **Add the database.** Project → *Storage* → *Marketplace* → **Turso Cloud** → create a database and connect it to the project. This adds `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`. Migrations run automatically on every build.
+3. **Set environment variables** (Project → *Settings → Environment Variables*). Use `.env.example` as the list. At minimum:
+   - `APP_URL` — e.g. `https://srkdrivingschool.co.uk` (or your `*.vercel.app` address at first)
+   - `OWNER_EMAILS` — Shahrukh's Google address
+   - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (see "Setting up Google sign-in"; the redirect URI is `APP_URL/auth/google/callback`)
+   - `CRON_SECRET` (any long random string — Vercel sends it with the daily cron call)
+   - `JOB_SECRET` (another long random string, for the external scheduler below)
+4. **Deploy**, open the site, sign in at `/app` with the owner's Google account and complete setup.
+5. **Reminder timing.** Background work (reminders, emails, expired holds) runs (a) after ordinary site visits, at most once a minute, (b) from the daily Vercel cron in `vercel.json`, and (c) — recommended — from a free external scheduler such as cron-job.org: every 10 minutes send `POST https://<your domain>/api/jobs/run` with header `Authorization: Bearer <JOB_SECRET>`. On the Pro plan you can instead change the cron schedule in `vercel.json` to `*/10 * * * *`.
+6. **Domain.** Project → *Settings → Domains* → add `srkdrivingschool.co.uk` and follow the DNS instructions. Do this only after checking the site on its `*.vercel.app` address. Remember to update `APP_URL` and the Google redirect URI when the domain changes. Google sign-in works only on the address registered with Google, not on preview deployment URLs.
+
+Manual migration, if ever needed: `TURSO_DATABASE_URL=... TURSO_AUTH_TOKEN=... npm run migrate`.
+
+An alternative Cloudflare Workers build is still available (`npm run build`, output in `dist/`), but Vercel is the supported path.
 
 ## Backups and restore
 
-- D1 Time Travel restores to any minute in the last 30 days: `npx wrangler d1 time-travel restore lane --timestamp <ISO time>`.
-- Take a nightly export as well: `npx wrangler d1 export lane --remote --output backup-$(date +%F).sql`, stored outside Cloudflare.
-- Restore an export into a fresh database with `npx wrangler d1 execute <new-db> --remote --file backup.sql`, then point the binding at it.
+- Turso keeps point-in-time history; restore from the Turso dashboard or CLI (`turso db create <new-name> --from-db <db> --timestamp <ISO time>`), then point `TURSO_DATABASE_URL` at the restored database. Check your Turso plan's retention period.
+- Take a regular off-site copy as well: `turso db shell <db> .dump > backup-$(date +%F).sql`.
 - Locally the database is `.data/lane.sqlite`; copy the file while the server is stopped.
 
 ## Launch blockers (not done)
@@ -84,4 +107,4 @@ Set the non-secret variables from `.env.example` in `wrangler.json` `vars` or th
 - **Business content to confirm** in `business.config.mjs`: prices, office vs lesson hours (Maps says 09:30–19:00 / 09:00–14:00; the current site says 9am–9pm 7 days), automatic-only vs "manual or automatic", area spellings, ADI wording/number. Statistics such as "500+ learners" and pass rates from the current site were deliberately **not** copied because they could not be verified.
 - **Privacy notice and terms** are drafts with `[TO CONFIRM]` items (legal entity, ICO registration, retention periods, controller/processor roles).
 - **Not built yet:** subscription billing (Phase B), waiting-list automation (Phase C), data export/deletion and retention jobs, error monitoring, cookie banner (only essential cookies are used today), SMS/WhatsApp, Google/Microsoft calendar sync, photo gallery.
-- Hosting decision and DNS cut-over from the existing site.
+- Vercel + Turso accounts, environment variables and DNS cut-over from the existing site (not done; nothing has been deployed).

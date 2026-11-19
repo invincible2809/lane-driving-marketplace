@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm ci",
+  "buildCommand": "node scripts/vercel-build.mjs",
+  "outputDirectory": "vercel-static",
+  "functions": {
+    "api/index.mjs": {
+      "includeFiles": "{public/site/**,drizzle/**}",
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {"source": "/((?!site/).*)", "destination": "/api/index"}
+  ],
+  "crons": [
+    {"path": "/api/jobs/run", "schedule": "0 7 * * *"}
+  ]
+}

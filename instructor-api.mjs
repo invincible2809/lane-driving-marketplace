@@ -89,7 +89,8 @@ export async function instructorApi(request, db, env = {}) {
   const email = (request.headers.get('oai-authenticated-user-email') || '').toLowerCase();
   const user = uid ? {id: uid, email} : null;
   const platformAdmin = !!uid && ((env.ADMIN_USER_ID && uid === env.ADMIN_USER_ID) || (env.ADMIN_EMAIL && email === env.ADMIN_EMAIL.toLowerCase()));
-  const ip = request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || 'local';
+  // Hosting platforms set these headers themselves; take the first (client) address.
+  const ip = (request.headers.get('cf-connecting-ip') || request.headers.get('x-real-ip') || request.headers.get('x-forwarded-for') || 'local').split(',')[0].trim();
   const requireUser = () => { if (!user) fail(401, 'Please sign in to continue.'); return user; };
   if (!['GET', 'HEAD'].includes(method)) { const o = request.headers.get('origin'); if (o && o !== url.origin) fail(403, 'Request origin is not allowed.'); }
   const audit = (ws, role, action, type, id, detail = {}) => db.prepare('INSERT INTO audit_log (id,workspace_id,actor_id,actor_role,action,subject_type,subject_id,detail,created_ms) VALUES (?,?,?,?,?,?,?,?,?)').bind(newId(), ws, uid || 'system', role, action, type, id, JSON.stringify(detail), now);
@@ -182,7 +183,7 @@ export async function instructorApi(request, db, env = {}) {
   }
   if (path === '/api/session' && method === 'GET') {
     const site = await siteWorkspace(db, env);
-    const siteInfo = {business_name: site?.business_name || null, google_sign_in: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET)};
+    const siteInfo = {business_name: site?.business_name || null, google_sign_in: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), demo: String(env.DEMO_MODE || '').toLowerCase() === 'true'};
     if (!user) return json({user: null, site: siteInfo});
     const w = await ownWorkspace();
     const links = (await db.prepare(`SELECT r.id learner_id, w.id workspace_id, w.business_name FROM learner_records r JOIN workspaces w ON w.id=r.workspace_id WHERE r.user_id=? AND r.status='active'`).bind(uid).all()).results;
@@ -259,9 +260,11 @@ export async function instructorApi(request, db, env = {}) {
     return json({ok: true, id}, 201);
   }
   // ================= jobs =================
-  if (path === '/api/jobs/run' && method === 'POST') {
+  if (path === '/api/jobs/run' && ['GET', 'POST'].includes(method)) {
+    // POST: external scheduler with JOB_SECRET. GET: Vercel Cron, which sends CRON_SECRET.
     const auth = request.headers.get('authorization') || '';
-    if (!(env.JOB_SECRET && safeEqual(auth, 'Bearer ' + env.JOB_SECRET)) && !platformAdmin) fail(401, 'Job access requires the job secret or an administrator.');
+    const secret = method === 'GET' ? env.CRON_SECRET : env.JOB_SECRET;
+    if (!(secret && safeEqual(auth, 'Bearer ' + secret)) && !platformAdmin) fail(401, 'Job access requires the job secret or an administrator.');
     return json(await processJobs(db, env, {now}));
   }
   // ================= platform administrator =================

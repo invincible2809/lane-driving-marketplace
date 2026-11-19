@@ -2,7 +2,7 @@
 
 Run on 12 November 2026, Node 22.23, Chromium (Playwright), local SQLite.
 
-## Automated tests — `npm test`: 35 passed, 0 failed
+## Automated tests — `npm test`: 36 passed, 0 failed
 
 | Area | What is verified |
 |---|---|
@@ -17,6 +17,7 @@ Run on 12 November 2026, Node 22.23, Chromium (Playwright), local SQLite.
 | Google sign-in (token endpoint mocked) | PKCE S256, single-use state, nonce check, verified email required, open redirect refused, secure cookie flags, logout ends session, owner-only workspace creation, spoofed identity headers ignored. |
 | Enquiries | Consent required; phone or email required; honeypot dropped; per-address rate limit; no-JavaScript form post; instructor notified (preview); conversion links a signed-in visitor's account. |
 | Build | The bundled Worker serves pages, assets, API, auth and runs the cron handler. |
+| Vercel + libSQL | The Vercel function on a libSQL database: migrations (idempotent), Google sign-in, enquiries, double-booking trigger, cron secret. `vercel build` (Vercel CLI) completed successfully and the built function served pages and API. |
 
 ## Browser journeys — `npm run test:e2e`: 28/28 checks passed (390×844)
 
@@ -30,4 +31,4 @@ Not done: screen-reader testing (NVDA/VoiceOver), keyboard-only walkthrough of e
 
 ## Not verified
 
-- Real Google sign-in (needs credentials), real email delivery (needs provider), Cloudflare D1 in production (tested against SQLite with the same SQL), load/performance.
+- Real Google sign-in (needs credentials), real email delivery (needs provider), an actual Vercel deployment and hosted Turso database (tested with Vercel's CLI build and a local libSQL file), load/performance.

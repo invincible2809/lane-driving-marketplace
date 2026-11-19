@@ -6,3 +6,5 @@ outputs/
 .sites-runtime/
 .wrangler/
 !.env.example
+vercel-static/
+.vercel/

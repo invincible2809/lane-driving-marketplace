@@ -5,7 +5,8 @@
 // The legacy learner marketplace is frozen and only reachable when MARKETPLACE_ENABLED=true.
 import {handleInstructorApi} from './instructor-api.mjs';
 import {api as marketplaceApi} from './api.mjs';
-import {authRoutes, withIdentity, googleConfigured} from './auth.mjs';
+import {authRoutes, withIdentity, googleConfigured, createSession, authRedirect, authPage, safeNext} from './auth.mjs';
+import {demoEnabled, DEMO_USERS, ensureDemoData, resetDemo, demoSignInPage} from './lib/demo.mjs';
 import {renderSitePage} from './lib/site.mjs';
 import {business} from './business.config.mjs';
 export const SITE_ASSETS = {
@@ -33,7 +34,40 @@ const businessMode = env => (env.SITE_MODE || 'business') === 'business';
 const html = (body, status = 200) => new Response(body, {status, headers: {'Content-Type': TYPES.html, 'Cache-Control': 'no-cache', ...SECURITY_HEADERS}});
 // readAsset(file) -> string | Uint8Array | null
 export async function handle(request, db, env, readAsset) {
+  const response = await route(request, db, env, readAsset);
+  // Keep demo deployments out of search results so they never compete with the real site.
+  if (demoEnabled(env)) { try { response.headers.set('X-Robots-Tag', 'noindex, nofollow'); } catch { /* immutable headers */ } }
+  return response;
+}
+async function demoRoutes(request, db, env, path) {
+  const url = new URL(request.url);
+  if (path === '/auth/sign-in' && request.method === 'GET') {
+    const next = safeNext(url.searchParams.get('next'));
+    if (demoEnabled(env)) return html(demoSignInPage(next, googleConfigured(env)));
+    if (googleConfigured(env)) return authRedirect('/auth/google/start?next=' + encodeURIComponent(next));
+    return authPage('Sign-in is not set up yet', 'The website owner needs to add Google sign-in credentials, or turn on demo mode.', 503);
+  }
+  if (!demoEnabled(env)) return null;
+  const origin = request.headers.get('origin');
+  if (request.method === 'POST' && origin && origin !== url.origin) return new Response('Forbidden', {status: 403});
+  if (path === '/auth/demo' && request.method === 'POST') {
+    const user = DEMO_USERS[new URLSearchParams(await request.text()).get('as')];
+    if (!user) return authPage('Unknown demo user', 'Choose one of the demo users.', 400);
+    return authRedirect(user.next, {'Set-Cookie': await createSession(db, env, user, 'demo')});
+  }
+  if (path === '/auth/demo/reset' && request.method === 'POST') {
+    const who = (await withIdentity(request, db, env)).headers.get('oai-authenticated-user-id');
+    if (who !== DEMO_USERS.instructor.id) return authPage('Not allowed', 'Only the demo instructor can reset the demo.', 403);
+    await resetDemo(db, env);
+    return authRedirect('/app');
+  }
+  return null;
+}
+async function route(request, db, env, readAsset) {
   const url = new URL(request.url), path = url.pathname;
+  if (path === '/robots.txt') return new Response(demoEnabled(env) ? 'User-agent: *\nDisallow: /\n' : 'User-agent: *\nDisallow: /app\nDisallow: /account\nDisallow: /api/\nDisallow: /auth/\n', {headers: {'Content-Type': 'text/plain'}});
+  if (demoEnabled(env) && db) await ensureDemoData(db, env);
+  if (path.startsWith('/auth/') && db) { const r = await demoRoutes(request, db, env, path); if (r) return r; }
   if (path.startsWith('/auth/')) {
     if (!db) return new Response('Database binding is not configured.', {status: 503});
     return authRoutes(request, db, env);
@@ -48,7 +82,7 @@ export async function handle(request, db, env, readAsset) {
   }
   if (['GET', 'HEAD'].includes(request.method) && businessMode(env)) {
     const user = db ? (await withIdentity(request, db, env)).headers.get('oai-authenticated-user-id') : null;
-    const page = renderSitePage(env.BUSINESS || business, path, {user, query: url.searchParams, googleReady: googleConfigured(env)});
+    const page = renderSitePage(env.BUSINESS || business, path, {user, query: url.searchParams, googleReady: googleConfigured(env), demo: demoEnabled(env)});
     if (page) return html(page);
   }
   let file = SITE_ASSETS[path] || (path === '/' ? 'site/landing.html' : null) || (/^\/site\/fonts\/[a-z0-9-]+\.woff2$/.test(path) ? path.slice(1) : null);
