@@ -25,7 +25,7 @@ Built for one real school, SRK Driving School, and personal to it rather than a 
 - Instructors work from the car and the doorstep, so quick, thumb-friendly, interruption-tolerant flows matter more than dense desktop views.
 - Times are shown in the workspace time zone (default Europe/London) and stored as UTC; BST and GMT changes are handled and nonexistent or repeated clock times are rejected.
 - Emails (confirmations and 48 h / 24 h reminders) go through durable jobs; locally they are preview-only.
-- Runs on Node with SQLite for development and on Vercel with a Turso (libSQL) database when hosted. `DEMO_MODE=true` turns a deployment into a labelled, non-indexed demo with sample data and one-click sign-in.
+- Runs on Node with SQLite for development and on Vercel with a Neon (PostgreSQL) database when hosted (Turso also supported). `DEMO_MODE=true` turns a deployment into a labelled, non-indexed demo with sample data and one-click sign-in.
 
 ## Capabilities and Constraints
 

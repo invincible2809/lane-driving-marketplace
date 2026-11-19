@@ -3,7 +3,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {handle} from '../app.mjs';
-import {database} from '../server.mjs';
+import {database} from './db.mjs';
 import {processJobs} from '../lib/jobs.mjs';
 import {zonedParts, addDays, HOUR, DAY, MINUTE} from '../lib/time.mjs';
 
@@ -46,7 +46,7 @@ test('only a listed owner email can create the workspace; none listed means nobo
     assert.equal((await noneListed('w/onboarding', 'POST', onboarding)).status, 403);
     assert.equal((await db.prepare('SELECT count(*) n FROM workspaces').first()).n, 0);
     assert.equal((await client(db, 'owner', {OWNER_EMAILS: 'Owner@Test.local'})('w/onboarding', 'POST', onboarding)).status, 201);
-  } finally { db.close(); }
+  } finally { await db.close(); }
 });
 test('onboarding validation, ownership and private workspaces', async () => {
   const db = database();
@@ -77,7 +77,7 @@ test('onboarding validation, ownership and private workspaces', async () => {
     assert.equal(admin.status, 200);
     assert.equal(admin.data.workspaces.length, 2);
     assert.ok(!JSON.stringify(admin.data).includes('Private Person'), 'platform overview exposes no learner details');
-  } finally { db.close(); }
+  } finally { await db.close(); }
 });
 
 test('instructor → learner journey: invite, hold, review terms, confirm, learner sees only own data', async () => {
@@ -134,7 +134,7 @@ test('instructor → learner journey: invite, hold, review terms, confirm, learn
     const messages = (await instructor('w/messages')).data.messages;
     assert.ok(messages.every(m => m.status === 'previewed'), 'development mode never claims a real send');
     assert.ok(!JSON.stringify(messages).includes('Private Road'), 'messages omit pickup addresses');
-  } finally { db.close(); }
+  } finally { await db.close(); }
 });
 
 test('two simultaneous requests cannot reserve the same slot', async () => {
@@ -157,7 +157,7 @@ test('two simultaneous requests cannot reserve the same slot', async () => {
     const t = {learner_id: learner.id, date: localDate(8), time: '10:00', minutes: 60};
     const both = await Promise.all([instructor('w/lessons', 'POST', t), instructor('w/lessons', 'POST', t)]);
     assert.deepEqual(both.map(r => r.status).sort(), [201, 409]);
-  } finally { db.close(); }
+  } finally { await db.close(); }
 });
 
 test('travel buffers, blocks and working hours prevent invalid bookings', async () => {
@@ -184,7 +184,7 @@ test('travel buffers, blocks and working hours prevent invalid bookings', async 
     const cal = await instructor(`w/calendar?from=${date}&to=${addDays(date, 6)}`);
     assert.equal(cal.data.lessons.length, 3);
     assert.equal(cal.data.days.length, 7);
-  } finally { db.close(); }
+  } finally { await db.close(); }
 });
 
 test('rescheduling invalidates obsolete reminders; stale edits are refused', async () => {
@@ -214,7 +214,7 @@ test('rescheduling invalidates obsolete reminders; stale edits are refused', asy
     assert.equal(c.data.lesson.status, 'cancelled');
     assert.equal((await pending()).length, 0, 'cancellation removes reminders');
     assert.equal((await instructor(`w/lessons/${lesson.id}`, 'PATCH', {action: 'complete'})).status, 409);
-  } finally { db.close(); }
+  } finally { await db.close(); }
 });
 
 test('retries and restarts never send duplicate reminders', async () => {
@@ -241,9 +241,9 @@ test('retries and restarts never send duplicate reminders', async () => {
     assert.equal(sends.length, before);
     // Enqueuing the same lesson event twice creates one job.
     const n = await db.prepare(`SELECT count(*) n FROM jobs WHERE lesson_id=?`).bind(lesson.id).first();
-    await db.prepare(`INSERT OR IGNORE INTO jobs (id,kind,idempotency_key,run_at_ms,created_ms) SELECT 'dup','email',idempotency_key,0,0 FROM jobs WHERE id=?`).bind(job.id).run();
+    await db.prepare(`INSERT INTO jobs (id,kind,idempotency_key,run_at_ms,created_ms) SELECT 'dup','email',idempotency_key,0,0 FROM jobs WHERE id=? ON CONFLICT DO NOTHING`).bind(job.id).run();
     assert.equal((await db.prepare(`SELECT count(*) n FROM jobs WHERE lesson_id=?`).bind(lesson.id).first()).n, n.n);
-  } finally { db.close(); }
+  } finally { await db.close(); }
 });
 
 test('private notes never appear in learner reports; drafts stay private until published', async () => {
@@ -275,7 +275,7 @@ test('private notes never appear in learner reports; drafts stay private until p
     const report = await instructor(`w/reports?from=${localDate(-10)}&to=${localDate(10)}`);
     assert.equal(report.data.recorded_value_pence, 4000);
     assert.equal(report.data.marked_paid[0].method, 'bank_transfer');
-  } finally { db.close(); }
+  } finally { await db.close(); }
 });
 
 test('learner cancellation inside the notice period requires acknowledgement and is recorded', async () => {
@@ -294,7 +294,7 @@ test('learner cancellation inside the notice period requires acknowledgement and
     const dash = await instructor('w/dashboard');
     assert.equal(dash.data.recent_cancellations.length, 1);
     assert.equal(dash.data.learners_without_booking.length, 1);
-  } finally { db.close(); }
+  } finally { await db.close(); }
 });
 
 test('recurring series: conflicts block the whole series or are skipped and listed', async () => {
@@ -312,7 +312,7 @@ test('recurring series: conflicts block the whole series or are skipped and list
     assert.equal(skipped.status, 201);
     assert.equal(skipped.data.created, 3);
     assert.equal(skipped.data.skipped[0].date, addDays(first, 14));
-  } finally { db.close(); }
+  } finally { await db.close(); }
 });
 
 test('invitations expire and marketplace routes are disabled by default', async () => {
@@ -326,5 +326,5 @@ test('invitations expire and marketplace routes are disabled by default', async 
     assert.equal((await client(db, null)('invitations/inspect', 'POST', {token: 'nope'})).status, 404);
     assert.equal((await client(db, 'x')('instructors?postcode=B1%201AA')).status, 404);
     assert.equal((await client(db, null)('health')).data.ok, true);
-  } finally { db.close(); }
+  } finally { await db.close(); }
 });

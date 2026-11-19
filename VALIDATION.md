@@ -19,6 +19,10 @@ Run on 12 November 2026, Node 22.23, Chromium (Playwright), local SQLite.
 | Build | The bundled Worker serves pages, assets, API, auth and runs the cron handler. |
 | Vercel + libSQL | The Vercel function on a libSQL database: migrations (idempotent), Google sign-in, enquiries, double-booking trigger, cron secret. `vercel build` (Vercel CLI) completed successfully and the built function served pages and API. |
 
+## PostgreSQL (Neon) — `npm run test:postgres` against PostgreSQL 16: 19 passed, 0 failed
+
+The integration tests above, run unchanged on PostgreSQL, plus: the Vercel function on PostgreSQL in demo mode; **20 simultaneous requests for the same slot on separate database connections → exactly one booking**; overlapping times inside the travel buffer refused; migrations idempotent through the deploy script. `vercel build` with `DATABASE_URL` set created the schema, and the built function served pages, demo sign-in and the dashboard from PostgreSQL. Not tested against Neon's hosted service itself or its connection pooler.
+
 ## Browser journeys — `npm run test:e2e`: 28/28 checks passed (390×844)
 
 Visitor enquiry → instructor dashboard banner → enquiry converted to learner → private note → lesson booked from free times → calendar day/week/list → learner sees shared report and no private notes → learner books (terms shown before confirming) → second learner sees nothing of the first → instructor accepts the request. No horizontal scrolling on any page checked; no browser console errors.
