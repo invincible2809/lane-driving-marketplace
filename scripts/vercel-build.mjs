@@ -15,5 +15,6 @@ if (config) {
 }
 rmSync('vercel-static', {recursive: true, force: true});
 mkdirSync('vercel-static/site', {recursive: true});
-for (const f of ['app.css', 'app.js', 'public.js']) cpSync(`public/site/${f}`, `vercel-static/site/${f}`);
+// Every browser asset (CSS, JS, fonts); HTML pages are rendered by the function.
+cpSync('public/site', 'vercel-static/site', {recursive: true, filter: src => !src.endsWith('.html')});
 console.log('Static assets ready in vercel-static/.');
