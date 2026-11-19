@@ -35,6 +35,28 @@ npm run test:e2e  # Chromium journeys at 390×844; set AXE_PATH=/path/to/axe.min
 npm run build     # dist/server/index.js (Cloudflare Worker) + wrangler.json + migrations
 ```
 
+## Logo
+
+SRK's own logo as it appears on the school's car signs: two slanted stripes (light orange `#fcb074`, deep orange `#fc5c00`) with "SRK DRIVING SCHOOL" in Poppins ExtraBold. Files are in `public/site/brand/` (served at `/site/brand/...`):
+
+| File | Use |
+|---|---|
+| `srk-logo-on-dark.svg` | Website and app header (black background) |
+| `srk-logo-on-light.svg` | White backgrounds, letters, PDFs |
+| `srk-logo-black.svg` | One colour (single-colour print) |
+| `srk-logo-stacked-on-dark.svg` / `-on-light.svg` | Square spaces: social profiles, posters |
+| `srk-logo-sign.svg` | The car-sign panel (black background) |
+| `srk-mark.svg`, `favicon-32.png`, `favicon-48.png` | Browser tab icon (`/favicon.ico` serves the PNG) |
+| `srk-app-icon.svg`, `apple-touch-icon.png`, `icon-512.png` | Phone home-screen and app icons |
+
+Lettering is converted to outlines so the logo looks the same everywhere. Poppins is under the SIL Open Font Licence; a copy and the licence are in `scripts/brand/fonts/`. To change the logo, edit `scripts/brand/build-logo.py` and run it (`pip install fonttools brotli uharfbuzz`), then `node scripts/brand/render-icons.mjs` for the PNGs. If you have the original logo file from your sign maker, it can replace these.
+
+## Test-day photo reel
+
+The home page shows SRK's 25 test-day photos beside the Google reviews as a film strip that winds on one photo every 2 seconds. It pauses on hover, keyboard focus, when scrolled out of view, or with its Pause button, and stays still for visitors who ask their device for reduced motion. Photos are in `public/site/passes/` and listed in `business.config.mjs` (`pass_photos`).
+
+To change the photos, put the originals in a folder and run `python3 scripts/brand/prepare-pass-photos.py <folder>` (`pip install pillow`). It resizes them to 600 × 800 and **removes all photo metadata, including GPS location**. Update the count in `business.config.mjs` if it changes. Only use photos of learners who agreed to be shown.
+
 ## Architecture
 
 - `lib/` — domain rules with no HTTP or database code: time zones and BST (`time.mjs`), availability and buffers (`availability.mjs`), lesson states and cancellation rules (`lessons.mjs`), progress (`progress.mjs`), durable jobs and reminders (`jobs.mjs`), email adapters (`mailer.mjs`), calendar adapter interface (`calendar.mjs`), email templates, public site renderer (`site.mjs`).

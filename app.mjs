@@ -20,7 +20,7 @@ export const SITE_ASSETS = {
   '/site/public.css': 'site/public.css'
 };
 export const MARKETPLACE_ASSETS = {'/marketplace': 'index.html', '/style.css': 'style.css', '/app.js': 'app.js', '/operations.js': 'operations.js'};
-const TYPES = {html: 'text/html; charset=utf-8', css: 'text/css; charset=utf-8', js: 'text/javascript; charset=utf-8', jpg: 'image/jpeg', ttf: 'font/ttf', woff2: 'font/woff2'};
+const TYPES = {html: 'text/html; charset=utf-8', css: 'text/css; charset=utf-8', js: 'text/javascript; charset=utf-8', jpg: 'image/jpeg', ttf: 'font/ttf', woff2: 'font/woff2', svg: 'image/svg+xml', png: 'image/png'};
 // The JSON-LD block on public pages is data, not script; its hash is not needed because browsers do not execute it.
 const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
@@ -85,7 +85,7 @@ async function route(request, db, env, readAsset) {
     const page = renderSitePage(env.BUSINESS || business, path, {user, query: url.searchParams, googleReady: googleConfigured(env), demo: demoEnabled(env)});
     if (page) return html(page);
   }
-  let file = SITE_ASSETS[path] || (path === '/' ? 'site/landing.html' : null) || (/^\/site\/fonts\/[a-z0-9-]+\.woff2$/.test(path) ? path.slice(1) : null);
+  let file = SITE_ASSETS[path] || (path === '/' ? 'site/landing.html' : null) || (/^\/site\/fonts\/[a-z0-9-]+\.woff2$/.test(path) ? path.slice(1) : null) || (/^\/site\/brand\/[a-z0-9-]+\.(svg|png)$/.test(path) ? path.slice(1) : null) || (/^\/site\/passes\/pass-\d{2}\.jpg$/.test(path) ? path.slice(1) : null) || (path === '/favicon.ico' ? 'site/brand/favicon-48.png' : null);
   if (!file && marketplaceEnabled(env)) file = MARKETPLACE_ASSETS[path] || (/^\/assets\/[a-z0-9-]+\.(jpg|ttf)$/.test(path) ? path.slice(1) : null);
   const body = file ? await readAsset(file) : null;
   if (body == null) return new Response('Not found', {status: 404, headers: {'Content-Type': 'text/plain', ...SECURITY_HEADERS}});

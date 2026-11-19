@@ -31,7 +31,7 @@ const readCookie = (request, name) => new RegExp('(?:^|;\\s*)' + name.replace(/[
 // Only same-site relative paths are allowed as post-login destinations.
 export const safeNext = p => typeof p === 'string' && /^\/(?![\/\\])[\w\-\/#?=&.%]*$/.test(p) ? p : '/account';
 const redirect = (location, headers = {}) => new Response(null, {status: 302, headers: {Location: location, 'Cache-Control': 'no-store', ...headers}});
-const page = (title, body, status = 400) => new Response(`<!doctype html><html lang="en-GB"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><link rel="stylesheet" href="/site/app.css"><main class="card"><h1>${title}</h1><p>${body}</p><p><a class="btn" href="/">Back to the website</a></p></main></html>`, {status, headers: {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store'}});
+const page = (title, body, status = 400) => new Response(`<!doctype html><html lang="en-GB"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><link rel="stylesheet" href="/site/app.css"><link rel="icon" href="/site/brand/srk-mark.svg" type="image/svg+xml"><main class="card"><h1>${title}</h1><p>${body}</p><p><a class="btn" href="/">Back to the website</a></p></main></html>`, {status, headers: {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store'}});
 
 // Resolve the signed-in identity and return a request carrying it in the
 // internal identity headers. Inbound identity headers are always removed unless

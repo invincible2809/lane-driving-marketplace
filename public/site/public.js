@@ -23,3 +23,64 @@ if (form) {
     finally { button.disabled = false; button.textContent = 'Send enquiry'; }
   });
 }
+
+// Test-day photo reel: a film strip that winds on one frame every 2 seconds.
+// Pauses on hover, keyboard focus, when off screen or the tab is hidden, and
+// has a Pause button (WCAG 2.2.2). With reduced motion it never moves by itself.
+const reel = document.querySelector('.pass-reel');
+if (reel) {
+  const HOLD_MS = 2000;
+  const windowEl = reel.querySelector('.reel-window');
+  const track = reel.querySelector('.reel-track');
+  const frames = [...track.children];
+  const count = reel.querySelector('.reel-count');
+  const toggle = reel.querySelector('.reel-toggle');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  // A copy of the first frame at the end lets the strip loop without jumping backwards.
+  const clone = frames[0].cloneNode(true);
+  clone.setAttribute('aria-hidden', 'true'); clone.removeAttribute('aria-label'); clone.removeAttribute('aria-roledescription');
+  clone.querySelector('img').alt = '';
+  track.append(clone);
+  let index = 0, timer = null, userPaused = false, hovering = false, focused = false, visible = true;
+  const step = () => frames[0].offsetHeight + parseFloat(getComputedStyle(frames[0]).marginBottom);
+  const peek = () => (windowEl.clientHeight - frames[0].offsetHeight) / 2;   // centre the current frame
+  const load = i => { const img = (track.children[i] || clone).querySelector('img'); if (img) img.loading = 'eager'; };
+  function place(animate) {
+    track.style.transition = animate && !reduced.matches ? 'transform .55s cubic-bezier(.65,0,.35,1)' : 'none';
+    track.style.transform = `translateY(${peek() - index * step()}px)`;
+    const shown = index % frames.length;
+    frames.forEach((f, i) => f.setAttribute('aria-hidden', String(i !== shown)));
+    count.textContent = `${shown + 1} / ${frames.length}`;
+    load(index + 1); load(index + 2);
+  }
+  function go(delta) {
+    if (index === frames.length && delta > 0) { index = 0; place(false); void track.offsetHeight; }
+    if (index === 0 && delta < 0) { index = frames.length; place(false); void track.offsetHeight; }
+    index += delta;
+    place(true);
+  }
+  track.addEventListener('transitionend', () => { if (index === frames.length) { index = 0; place(false); } });
+  const running = () => !userPaused && !hovering && !focused && visible && !document.hidden && !reduced.matches;
+  function schedule() {
+    clearInterval(timer); timer = null;
+    if (running()) timer = setInterval(() => go(1), HOLD_MS);
+    toggle.textContent = userPaused || reduced.matches ? 'Play' : 'Pause';
+    toggle.setAttribute('aria-pressed', String(userPaused));
+  }
+  reel.querySelector('.reel-next').addEventListener('click', () => { go(1); schedule(); });
+  reel.querySelector('.reel-prev').addEventListener('click', () => { go(-1); schedule(); });
+  toggle.addEventListener('click', () => {
+    if (reduced.matches) { go(1); return; }          // reduced motion: the button steps instead
+    userPaused = !userPaused; schedule();
+  });
+  reel.addEventListener('pointerenter', () => { hovering = true; schedule(); });
+  reel.addEventListener('pointerleave', () => { hovering = false; schedule(); });
+  reel.addEventListener('focusin', () => { focused = true; schedule(); });
+  reel.addEventListener('focusout', () => { focused = false; schedule(); });
+  document.addEventListener('visibilitychange', schedule);
+  reduced.addEventListener?.('change', schedule);
+  if ('IntersectionObserver' in window) new IntersectionObserver(([e]) => { visible = e.isIntersecting; schedule(); }).observe(reel);
+  addEventListener('resize', () => place(false));
+  reel.querySelector('.reel-controls').hidden = false;
+  place(false); schedule();
+}

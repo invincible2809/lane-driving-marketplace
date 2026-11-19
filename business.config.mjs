@@ -16,6 +16,9 @@ export const business = {
     {days: 'Saturday and Sunday', open: '09:00', close: '14:00', schema: ['Saturday', 'Sunday']}
   ],
   google_maps_url: 'https://maps.app.goo.gl/akLFXEkfsWg2fdSG9',
+  // Test-day photos from srkdrivingschool.co.uk (read 19 Nov 2026), resized and stripped of metadata
+  // by scripts/brand/prepare-pass-photos.py. Only show learners who agreed to their photo being shared.
+  pass_photos: Array.from({length: 25}, (_, i) => `/site/passes/pass-${String(i + 1).padStart(2, '0')}.jpg`),
   // Shown with its date so it never goes stale silently. Update when it changes.
   google_rating: {score: '5.0', count: 13, as_of: 'November 2026'},
   // Google reviews copied word for word from srkdrivingschool.co.uk (read 12 Nov 2026), the first three are featured, the rest follow newest first.

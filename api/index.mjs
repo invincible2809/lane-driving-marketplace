@@ -28,7 +28,11 @@ function database(env) {
   if (!config) return null;
   if (config.kind === 'postgres') {
     const pool = env.__PG_POOL || new pg.Pool({connectionString: config.url, max: 5, idleTimeoutMillis: 5000});
-    if (!env.__PG_POOL) attachDatabasePool(pool);
+    if (!env.__PG_POOL) {
+      // Neon may close idle connections; without a handler the pool's error event would crash the function.
+      pool.on('error', e => console.error('database pool error', e.code || e.message));
+      attachDatabasePool(pool);
+    }
     db = pgDatabase(pool);
   } else {
     db = libsqlDatabase(env.__LIBSQL_CLIENT || createClient({url: config.url, authToken: config.authToken}));
