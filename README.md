@@ -37,18 +37,19 @@ npm run build     # dist/server/index.js (Cloudflare Worker) + wrangler.json + m
 
 ## Logo
 
-Files are in `public/site/brand/` (served at `/site/brand/...`):
+SRK's own logo as it appears on the school's car signs: two slanted stripes (light orange `#fcb074`, deep orange `#fc5c00`) with "SRK DRIVING SCHOOL" in Poppins ExtraBold. Files are in `public/site/brand/` (served at `/site/brand/...`):
 
 | File | Use |
 |---|---|
 | `srk-logo-on-dark.svg` | Website and app header (black background) |
 | `srk-logo-on-light.svg` | White backgrounds, letters, PDFs |
-| `srk-logo-black.svg` | One colour, for yellow backgrounds or single-colour print |
+| `srk-logo-black.svg` | One colour (single-colour print) |
 | `srk-logo-stacked-on-dark.svg` / `-on-light.svg` | Square spaces: social profiles, posters |
+| `srk-logo-sign.svg` | The car-sign panel (black background) |
 | `srk-mark.svg`, `favicon-32.png`, `favicon-48.png` | Browser tab icon (`/favicon.ico` serves the PNG) |
 | `srk-app-icon.svg`, `apple-touch-icon.png`, `icon-512.png` | Phone home-screen and app icons |
 
-The mark is a road running to the horizon with a dashed centre line, echoing the road on the home page; colours are the site's black `#0a0a0a` and yellow `#f9e615`. Lettering is Archivo (condensed, black weight) and Atkinson Hyperlegible, converted to outlines so the logo looks the same everywhere. Both fonts are under the SIL Open Font Licence. To change the logo, edit `scripts/brand/build-logo.py` and run it (`pip install fonttools brotli uharfbuzz`), then `node scripts/brand/render-icons.mjs` for the PNGs.
+Lettering is converted to outlines so the logo looks the same everywhere. Poppins is under the SIL Open Font Licence; a copy and the licence are in `scripts/brand/fonts/`. To change the logo, edit `scripts/brand/build-logo.py` and run it (`pip install fonttools brotli uharfbuzz`), then `node scripts/brand/render-icons.mjs` for the PNGs. If you have the original logo file from your sign maker, it can replace these.
 
 ## Test-day photo reel
 

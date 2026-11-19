@@ -1,118 +1,113 @@
-"""Builds the SRK Driving School logo files from the site's own fonts.
+"""Builds the SRK Driving School logo files.
 
-Lettering is converted to outlines, so the SVGs look identical everywhere
-(including as <img>, in emails and in print) without loading web fonts.
-Fonts: Archivo and Atkinson Hyperlegible, both SIL Open Font Licence 1.1.
+Recreates SRK's existing logo as seen on the school's car signs: two slanted
+stripes (light and deep orange) above "SRK DRIVING SCHOOL" in a heavy
+geometric typeface (Poppins ExtraBold, SIL Open Font Licence 1.1, copy and
+licence in scripts/brand/fonts/). Lettering is converted to outlines, so the
+SVGs look identical everywhere without loading web fonts.
 
 Usage: pip install fonttools brotli uharfbuzz && python3 scripts/brand/build-logo.py
+Then:  node scripts/brand/render-icons.mjs   (PNG icons)
 Output: public/site/brand/*.svg
 """
 import io
 from pathlib import Path
 import uharfbuzz as hb
 from fontTools.ttLib import TTFont
-from fontTools.varLib import instancer
 from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.transformPen import TransformPen
 
 ROOT = Path(__file__).resolve().parents[2]
-FONTS = ROOT / 'public/site/fonts'
 OUT = ROOT / 'public/site/brand'
-YELLOW, BLACK, WHITE = '#f9e615', '#0a0a0a', '#fafafa'
+LIGHT, DEEP = '#fcb074', '#fc5c00'          # sampled from the car signage
+BLACK, WHITE = '#0a0a0a', '#ffffff'
 
 class Face:
-    def __init__(self, file, axes=None):
-        font = TTFont(FONTS / file)
-        if axes:
-            font = instancer.instantiateVariableFont(font, axes)
-        buf = io.BytesIO(); font.flavor = None; font.save(buf)
+    def __init__(self, path):
+        font = TTFont(path); font.flavor = None
+        buf = io.BytesIO(); font.save(buf)
         self.font = TTFont(io.BytesIO(buf.getvalue()))
         self.hb_font = hb.Font(hb.Face(buf.getvalue()))
-        self.glyphs = self.font.getGlyphSet()
-        self.order = self.font.getGlyphOrder()
-        self.upem = self.font['head'].unitsPerEm
-        self.cap = self.font['OS/2'].sCapHeight
-
+        self.glyphs = self.font.getGlyphSet(); self.order = self.font.getGlyphOrder()
+        self.upem = self.font['head'].unitsPerEm; self.cap = self.font['OS/2'].sCapHeight
+    def measure(self, text, cap_px, tracking=0.0):
+        return self.path(text, cap_px, 0, 0, tracking)[1]
     def path(self, text, cap_px, x, baseline, tracking=0.0):
-        """SVG path data for text whose capital letters are cap_px tall. Returns (d, width)."""
+        """SVG path data for text whose capitals are cap_px tall. Returns (d, width)."""
         buf = hb.Buffer(); buf.add_str(text); buf.guess_segment_properties()
-        hb.shape(self.hb_font, buf, {'kern': True, 'liga': False})
-        s = cap_px / self.cap
-        track = tracking * self.upem
+        hb.shape(self.hb_font, buf, {'kern': True})
+        s = cap_px / self.cap; track = tracking * self.upem
         pen = SVGPathPen(self.glyphs, ntos=lambda v: f'{v:.2f}'.rstrip('0').rstrip('.'))
-        cursor = 0.0
-        infos, positions = buf.glyph_infos, buf.glyph_positions
-        for i, (info, pos) in enumerate(zip(infos, positions)):
-            name = self.order[info.codepoint]
-            gx = x + (cursor + pos.x_offset) * s
-            self.glyphs[name].draw(TransformPen(pen, (s, 0, 0, -s, gx, baseline - pos.y_offset * s)))
-            cursor += pos.x_advance + (track if i < len(infos) - 1 else 0)
+        cursor = 0.0; n = len(buf.glyph_infos)
+        for i, (info, pos) in enumerate(zip(buf.glyph_infos, buf.glyph_positions)):
+            self.glyphs[self.order[info.codepoint]].draw(TransformPen(pen, (s, 0, 0, -s, x + (cursor + pos.x_offset) * s, baseline - pos.y_offset * s)))
+            cursor += pos.x_advance + (track if i < n - 1 else 0)
         return pen.getCommands(), cursor * s
 
-archivo = Face('archivo-latin-wdth-normal.woff2', {'wght': 900, 'wdth': 75})
-atkinson = Face('atkinson-hyperlegible-latin-700-normal.woff2')
+poppins = Face(ROOT / 'scripts/brand/fonts/poppins-latin-800-normal.woff2')
 
-def road_mark(x=0, y=0, size=64, plate=YELLOW, road=BLACK, line=YELLOW, uid='m'):
-    """Rounded yellow plate with a straight road running to a flat horizon and a
-    dashed centre line (echoes the road in the website's home-page hero)."""
-    k = size / 64
-    def P(px, py): return f'{x + px * k:.2f},{y + py * k:.2f}'
-    horizon, bottom, cx = 20.0, 68.0, 32.0
-    half = lambda py: 4.2 + (py - horizon) / (bottom - horizon) * (34.0 - 4.2)   # road half-width
-    at = lambda t: bottom - (bottom - horizon) * t                                 # t: 0 bottom, 1 horizon
-    road_pts = ' '.join([P(cx - half(bottom), bottom), P(cx + half(bottom), bottom), P(cx + half(horizon), horizon), P(cx - half(horizon), horizon)])
-    dashes = []
-    for ta, tb in [(0.0, 0.12), (0.22, 0.31), (0.40, 0.47), (0.55, 0.60), (0.67, 0.71), (0.77, 0.80)]:
-        ya, yb = at(ta), at(tb)
-        wa, wb = half(ya) * 0.15, half(yb) * 0.15
-        dashes.append(f'<polygon points="{P(cx - wa, ya)} {P(cx + wa, ya)} {P(cx + wb, yb)} {P(cx - wb, yb)}" fill="{line}"/>')
-    r = 13 * k
-    return (f'<clipPath id="{uid}"><rect x="{x:.2f}" y="{y:.2f}" width="{size:.2f}" height="{size:.2f}" rx="{r:.2f}"/></clipPath>'
-            f'<rect x="{x:.2f}" y="{y:.2f}" width="{size:.2f}" height="{size:.2f}" rx="{r:.2f}" fill="{plate}"/>'
-            f'<g clip-path="url(#{uid})"><polygon points="{road_pts}" fill="{road}"/>{"".join(dashes)}</g>')
+# Stripe geometry traced from the car sign, in a 421 x 228 box.
+STRIPES_W, STRIPES_H = 421.0, 228.0
+TOP = [(168, 0), (323, 0), (155, 152), (0, 152)]
+BOTTOM = [(266, 75), (421, 75), (253, 228), (98, 228)]
+def stripes(x, y, height, light=LIGHT, deep=DEEP):
+    k = height / STRIPES_H
+    pts = lambda poly: ' '.join(f'{x + px * k:.2f},{y + py * k:.2f}' for px, py in poly)
+    return f'<polygon points="{pts(TOP)}" fill="{light}"/><polygon points="{pts(BOTTOM)}" fill="{deep}"/>'
+def stripes_width(height): return STRIPES_W * height / STRIPES_H
 
-def svg(width, height, body, title):
+def svg(width, height, body, title='SRK Driving School'):
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:.2f} {height:.2f}" width="{width:.0f}" height="{height:.0f}" role="img" aria-labelledby="t">'
             f'<title id="t">{title}</title>{body}</svg>\n')
 
-def horizontal(ink, plate=YELLOW, road=BLACK, line=YELLOW, sub=None):
-    """[road mark] SRK  DRIVING / SCHOOL"""
-    H, cap = 64.0, 44.0
-    top = (H - cap) / 2                       # SRK capitals centred on the mark
-    base = top + cap
-    srk, srk_w = archivo.path('SRK', cap, 78, base, tracking=0.01)
-    sub_cap = 17.6
-    x2 = 78 + srk_w + 11
-    l1, w1 = atkinson.path('DRIVING', sub_cap, x2, top + sub_cap, tracking=0.09)
-    l2, w2 = atkinson.path('SCHOOL', sub_cap, x2, base, tracking=0.09)
-    width = x2 + max(w1, w2) + 1
-    body = (road_mark(0, 0, H, plate, road, line, uid='hm') +
-            f'<path d="{srk}" fill="{ink}"/><path d="{l1} {l2}" fill="{sub or ink}"/>')
-    return svg(width, H, body, 'SRK Driving School')
+def horizontal(ink, light=LIGHT, deep=DEEP):
+    """Website header: [stripes]  SRK / DRIVING SCHOOL"""
+    H = 64.0
+    mark_h = 46.0; mark_w = stripes_width(mark_h)
+    srk_cap, sub_cap, gap = 27.0, 11.5, 9.0
+    top = (H - (srk_cap + gap + sub_cap)) / 2
+    tx = mark_w + 14
+    srk, srk_w = poppins.path('SRK', srk_cap, tx, top + srk_cap, tracking=0.02)
+    sub, sub_w = poppins.path('DRIVING SCHOOL', sub_cap, tx, top + srk_cap + gap + sub_cap, tracking=0.04)
+    width = tx + max(srk_w, sub_w) + 1
+    return svg(width, H, stripes(0, (H - mark_h) / 2, mark_h, light, deep) + f'<path d="{srk} {sub}" fill="{ink}"/>')
 
-def stacked(ink):
-    """Mark above the name, for square spaces (social profile, documents)."""
-    W = 200.0
-    mark = road_mark((W - 96) / 2, 0, 96, uid='sm')
-    srk_cap, sub_cap = 40.0, 13.0
-    _, srk_w = archivo.path('SRK', srk_cap, 0, 0, tracking=0.01)
-    srk, _ = archivo.path('SRK', srk_cap, (W - srk_w) / 2, 96 + 18 + srk_cap, tracking=0.01)
-    _, sub_w = atkinson.path('DRIVING SCHOOL', sub_cap, 0, 0, tracking=0.12)
-    sub, _ = atkinson.path('DRIVING SCHOOL', sub_cap, (W - sub_w) / 2, 96 + 18 + srk_cap + 12 + sub_cap, tracking=0.12)
-    return svg(W, 96 + 18 + srk_cap + 12 + sub_cap + 2, mark + f'<path d="{srk} {sub}" fill="{ink}"/>', 'SRK Driving School')
+def stacked(ink, panel=None, light=LIGHT, deep=DEEP):
+    """As on the car sign: stripes, then SRK, then DRIVING SCHOOL, centred."""
+    pad = 28.0 if panel else 0.0
+    sub_cap = 30.0
+    sub_w = poppins.measure('DRIVING SCHOOL', sub_cap)
+    W = sub_w + pad * 2
+    mark_h = 0.62 * sub_w * STRIPES_H / STRIPES_W
+    mark_w = stripes_width(mark_h)
+    srk_cap = sub_cap
+    y_mark = pad; y_srk = y_mark + mark_h + 26 + srk_cap; y_sub = y_srk + 14 + sub_cap
+    srk_w = poppins.measure('SRK', srk_cap)
+    srk, _ = poppins.path('SRK', srk_cap, (W - srk_w) / 2, y_srk)
+    sub, _ = poppins.path('DRIVING SCHOOL', sub_cap, pad, y_sub)
+    H = y_sub + pad + (4 if not panel else 0)
+    bg = f'<rect width="{W:.2f}" height="{H:.2f}" fill="{panel}"/>' if panel else ''
+    return svg(W, H, bg + stripes((W - mark_w) / 2, y_mark, mark_h, light, deep) + f'<path d="{srk} {sub}" fill="{ink}"/>')
+
+def icon(rounded=True):
+    """Stripes on a black tile: favicon and app icon."""
+    S = 64.0; mark_h = 33.0; mark_w = stripes_width(mark_h)
+    rx = ' rx="13"' if rounded else ''
+    return svg(S, S, f'<rect width="64" height="64"{rx} fill="{BLACK}"/>' + stripes((S - mark_w) / 2, (S - mark_h) / 2, mark_h))
 
 OUT.mkdir(parents=True, exist_ok=True)
+for old in OUT.glob('srk-*.svg'):
+    old.unlink()
 files = {
-    'srk-logo-on-dark.svg': horizontal(WHITE),                                    # website header, dark pages
-    'srk-logo-on-light.svg': horizontal(BLACK),                                   # white backgrounds, documents
-    'srk-logo-black.svg': horizontal(BLACK, plate=BLACK, road=YELLOW, line=BLACK),  # one colour on yellow
-    'srk-logo-stacked-on-dark.svg': stacked(WHITE),
-    'srk-logo-stacked-on-light.svg': stacked(BLACK),
-    'srk-mark.svg': svg(64, 64, road_mark(uid='mk'), 'SRK Driving School'),       # favicon / app icon
+    'srk-logo-on-dark.svg': horizontal(WHITE),                 # website and app header
+    'srk-logo-on-light.svg': horizontal(BLACK),                # white backgrounds, letters
+    'srk-logo-black.svg': horizontal(BLACK, BLACK, BLACK),     # one colour (print, stamps)
+    'srk-logo-stacked-on-dark.svg': stacked(WHITE),            # square spaces on dark
+    'srk-logo-stacked-on-light.svg': stacked(BLACK),           # square spaces on white
+    'srk-logo-sign.svg': stacked(WHITE, panel=BLACK),          # the car-sign panel itself
+    'srk-mark.svg': icon(True),                                # favicon
+    'srk-app-icon.svg': icon(False),                           # phone home screen (phone rounds it)
 }
-# Square, full-bleed icon for phone home screens (the phone rounds the corners itself).
-full_bleed = road_mark(uid='ab').replace('rx="13.00"', 'rx="0"')
-files['srk-app-icon.svg'] = svg(64, 64, full_bleed, 'SRK Driving School')
 for name, content in files.items():
     (OUT / name).write_text(content)
     print(f'{name}: {len(content)} bytes')

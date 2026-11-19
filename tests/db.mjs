@@ -16,6 +16,8 @@ export async function freshPgPool() {
   await admin.connect(); await admin.query(`CREATE DATABASE ${name}`); await admin.end();
   const url = new URL(process.env.TEST_DATABASE_URL); url.pathname = '/' + name;
   const pool = new pg.Pool({connectionString: url.toString(), max: 10});
+  // Dropping the test database terminates idle pooled connections; that is expected here.
+  pool.on('error', () => {});
   await migratePg(pool, pgMigrationFiles());
   return {pool, name};
 }
