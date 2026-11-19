@@ -109,7 +109,7 @@
 .stars .base{fill:#3a3a3a}.stars .gold{fill:var(--brand)}
 .pull{margin:0 0 2.5rem;max-width:52rem}
 .pull blockquote,.review blockquote{margin:0}
-.pull p{font-size:clamp(1.6rem,3.2vw,2.35rem);font-weight:700;line-height:1.25;margin:0 0 1rem;max-width:none;text-wrap:balance}
+.pull p{font-size:clamp(1.2rem,2vw,1.55rem);font-weight:700;line-height:1.25;margin:0 0 1rem;max-width:none;text-wrap:balance}
 .pull figcaption,.review figcaption{color:var(--muted);font-size:.95rem}
 .pull figcaption strong,.review figcaption strong{color:var(--ink)}
 .review-list{display:grid;gap:1.75rem 2.5rem;align-items:start;margin-top:1rem}
@@ -157,25 +157,17 @@
  }
 }
 
-/* Test-day photo reel: a vertical film strip beside the reviews. */
-.reviews-with-reel{display:grid;gap:0 3rem;grid-template-areas:"head" "reel" "rest"}
-.reviews-with-reel>.reviews-head{grid-area:head}
-.reviews-with-reel>.pass-reel{grid-area:reel;margin:0 auto 2.5rem;width:min(100%,16rem)}
-.reviews-with-reel>:not(.reviews-head):not(.pass-reel){grid-column:1}
-@media (min-width:900px){
- .reviews-with-reel{grid-template-columns:minmax(0,1fr) 20rem;grid-template-areas:"head reel";align-items:start}
- .reviews-with-reel>:not(.reviews-head):not(.pass-reel){grid-column:1}
- .reviews-with-reel>.pass-reel{grid-row:1 / span 6;grid-column:2;margin:0;position:sticky;top:1.5rem;width:100%}
-}
+/* Test-day photo reel: a horizontal cinema film strip under the review heading. */
+.reviews-with-reel>.pass-reel{margin:0 0 2.5rem}
 .pass-reel{margin:0}
-.reel-window{--peek:9%;position:relative;overflow:hidden;background:#000;border-radius:6px;aspect-ratio:3/4.6;box-shadow:0 0 0 1px var(--line)}
-/* Film edges with sprocket holes travel with the frames. */
-.reel-track{list-style:none;margin:0;padding:0;will-change:transform}
-.reel-frame{position:relative;padding:0 13% ;background:#000;margin-bottom:3%}
-.reel-frame::before,.reel-frame::after{content:"";position:absolute;top:0;bottom:0;width:5%;background:repeating-linear-gradient(to bottom,transparent 0 7px,#d9d9d9 7px 17px,transparent 17px 26px)}
-.reel-frame::before{left:4%}.reel-frame::after{right:4%}
+.reel-window{position:relative;overflow:hidden;background:#000;border-radius:6px;box-shadow:0 0 0 1px var(--line)}
+/* Sprocket holes run the full length of the strip and move with it. */
+.reel-track{position:relative;list-style:none;margin:0;padding:0;display:flex;width:max-content;will-change:transform}
+.reel-track::before,.reel-track::after{content:"";position:absolute;left:0;right:0;height:10px;background:repeating-linear-gradient(to right,transparent 0 6px,#d9d9d9 6px 18px,transparent 18px 26px);pointer-events:none;z-index:1}
+.reel-track::before{top:8px}.reel-track::after{bottom:8px}
+.reel-frame{position:relative;flex:none;width:clamp(150px,22vw,220px);padding:26px 5px;background:#000}
 .reel-frame img{display:block;width:100%;height:auto;aspect-ratio:3/4;object-fit:cover;border-radius:2px}
-.reel-window::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(#000 0,transparent 9%,transparent 91%,#000 100%)}
+.reel-window::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(to right,#000 0,transparent 6%,transparent 94%,#000 100%)}
 .reel-controls{display:flex;align-items:center;gap:.5rem;margin-top:.75rem}
 .reel-controls[hidden]{display:none}
 .reel-controls button{min-width:44px;min-height:44px;padding:0 .75rem;border:1px solid var(--edge);border-radius:4px;background:transparent;color:var(--ink);font:inherit;font-weight:700;cursor:pointer}
