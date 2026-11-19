@@ -24,9 +24,10 @@ if (form) {
   });
 }
 
-// Test-day photo reel: a film strip that winds on one frame every 2 seconds.
-// Pauses on hover, keyboard focus, when off screen or the tab is hidden, and
-// has a Pause button (WCAG 2.2.2). With reduced motion it never moves by itself.
+// Test-day photo reel: a horizontal film strip that moves on one frame every
+// 2 seconds. Pauses on hover, keyboard focus, when off screen or the tab is
+// hidden, and has a Pause button (WCAG 2.2.2). With reduced motion it never
+// moves by itself.
 const reel = document.querySelector('.pass-reel');
 if (reel) {
   const HOLD_MS = 2000;
@@ -36,26 +37,28 @@ if (reel) {
   const count = reel.querySelector('.reel-count');
   const toggle = reel.querySelector('.reel-toggle');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-  // A copy of the first frame at the end lets the strip loop without jumping backwards.
-  const clone = frames[0].cloneNode(true);
-  clone.setAttribute('aria-hidden', 'true'); clone.removeAttribute('aria-label'); clone.removeAttribute('aria-roledescription');
-  clone.querySelector('img').alt = '';
-  track.append(clone);
+  // Copies of the first frames at the end keep the strip full while it loops.
+  for (const f of frames.slice(0, 8)) {
+    const c = f.cloneNode(true);
+    c.setAttribute('aria-hidden', 'true'); c.removeAttribute('aria-label'); c.removeAttribute('aria-roledescription');
+    c.querySelector('img').alt = ''; c.querySelector('img').loading = 'lazy';
+    track.append(c);
+  }
   let index = 0, timer = null, userPaused = false, hovering = false, focused = false, visible = true;
-  const step = () => frames[0].offsetHeight + parseFloat(getComputedStyle(frames[0]).marginBottom);
-  const peek = () => (windowEl.clientHeight - frames[0].offsetHeight) / 2;   // centre the current frame
-  const load = i => { const img = (track.children[i] || clone).querySelector('img'); if (img) img.loading = 'eager'; };
+  const step = () => frames[0].getBoundingClientRect().width;
+  const load = i => { const img = track.children[i]?.querySelector('img'); if (img) img.loading = 'eager'; };
   function place(animate) {
     track.style.transition = animate && !reduced.matches ? 'transform .55s cubic-bezier(.65,0,.35,1)' : 'none';
-    track.style.transform = `translateY(${peek() - index * step()}px)`;
+    track.style.transform = `translateX(${-index * step()}px)`;
     const shown = index % frames.length;
     frames.forEach((f, i) => f.setAttribute('aria-hidden', String(i !== shown)));
     count.textContent = `${shown + 1} / ${frames.length}`;
-    load(index + 1); load(index + 2);
+    const across = Math.ceil(windowEl.clientWidth / step()) + 1;
+    for (let i = index; i <= index + across; i++) load(i);
   }
   function go(delta) {
-    if (index === frames.length && delta > 0) { index = 0; place(false); void track.offsetHeight; }
-    if (index === 0 && delta < 0) { index = frames.length; place(false); void track.offsetHeight; }
+    if (index === frames.length && delta > 0) { index = 0; place(false); void track.offsetWidth; }
+    if (index === 0 && delta < 0) { index = frames.length; place(false); void track.offsetWidth; }
     index += delta;
     place(true);
   }

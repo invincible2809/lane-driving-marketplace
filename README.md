@@ -53,7 +53,7 @@ Lettering is converted to outlines so the logo looks the same everywhere. Poppin
 
 ## Test-day photo reel
 
-The home page shows SRK's 25 test-day photos beside the Google reviews as a film strip that winds on one photo every 2 seconds. It pauses on hover, keyboard focus, when scrolled out of view, or with its Pause button, and stays still for visitors who ask their device for reduced motion. Photos are in `public/site/passes/` and listed in `business.config.mjs` (`pass_photos`).
+The home page shows SRK's 25 test-day photos beside the Google reviews as a horizontal cinema film strip that moves on one photo every 2 seconds. It pauses on hover, keyboard focus, when scrolled out of view, or with its Pause button, and stays still for visitors who ask their device for reduced motion. Photos are in `public/site/passes/` and listed in `business.config.mjs` (`pass_photos`).
 
 To change the photos, put the originals in a folder and run `python3 scripts/brand/prepare-pass-photos.py <folder>` (`pip install pillow`). It resizes them to 600 × 800 and **removes all photo metadata, including GPS location**. Update the count in `business.config.mjs` if it changes. Only use photos of learners who agreed to be shown.
 
