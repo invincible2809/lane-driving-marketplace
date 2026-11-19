@@ -26,7 +26,7 @@ const TRIGGER_ERRORS = {
 };
 function mapDbError(e) {
   for (const [code, message] of Object.entries(TRIGGER_ERRORS)) if (String(e.message).includes(code)) return new HttpError(409, message, {code});
-  if (/UNIQUE constraint failed: learner_records/.test(e.message)) return new HttpError(409, 'This account is already linked to another learner record with this instructor.');
+  if (/UNIQUE constraint failed: learner_records|learner_user_per_ws/.test(e.message)) return new HttpError(409, 'This account is already linked to another learner record with this instructor.');
   return null;
 }
 // ---------- input helpers ----------
@@ -59,8 +59,8 @@ function safeEqual(a, b) {
 }
 async function rateLimit(db, key, limit, windowMs, now) {
   const row = await db.prepare(`INSERT INTO rate_limits (key, window_start_ms, count) VALUES (?, ?, 1)
-    ON CONFLICT(key) DO UPDATE SET count = CASE WHEN window_start_ms < ? THEN 1 ELSE count + 1 END,
-    window_start_ms = CASE WHEN window_start_ms < ? THEN ? ELSE window_start_ms END RETURNING count`).bind(key, now, now - windowMs, now - windowMs, now).first();
+    ON CONFLICT(key) DO UPDATE SET count = CASE WHEN rate_limits.window_start_ms < ? THEN 1 ELSE rate_limits.count + 1 END,
+    window_start_ms = CASE WHEN rate_limits.window_start_ms < ? THEN CAST(? AS BIGINT) ELSE rate_limits.window_start_ms END RETURNING count`).bind(key, now, now - windowMs, now - windowMs, now).first();
   if (row.count > limit) fail(429, 'Too many attempts. Please wait a few minutes and try again.');
 }
 // ---------- shapes ----------
@@ -125,7 +125,7 @@ export async function instructorApi(request, db, env = {}) {
     const updated = {...lesson, ...set, revision: lesson.revision + 1};
     const stmts = [
       db.prepare(`UPDATE lessons SET ${cols.map(c => c + '=?').join(',')}, revision=revision+1, change_id=?, updated_ms=? WHERE id=? AND revision=?`).bind(...cols.map(c => set[c]), changeId, now, lesson.id, expectedRevision ?? lesson.revision),
-      db.prepare(`INSERT INTO lesson_events (id,lesson_id,workspace_id,actor_id,actor_role,action,from_status,to_status,detail,revision,created_ms) SELECT ?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM lessons WHERE id=? AND change_id=?)`)
+      db.prepare(`INSERT INTO lesson_events (id,lesson_id,workspace_id,actor_id,actor_role,action,from_status,to_status,detail,revision,created_ms) SELECT CAST(? AS TEXT),CAST(? AS TEXT),CAST(? AS TEXT),CAST(? AS TEXT),CAST(? AS TEXT),CAST(? AS TEXT),CAST(? AS TEXT),CAST(? AS TEXT),CAST(? AS TEXT),CAST(? AS INTEGER),CAST(? AS BIGINT) WHERE EXISTS (SELECT 1 FROM lessons WHERE id=? AND change_id=?)`)
         .bind(newId(), lesson.id, w.id, uid, role, action, lesson.status, updated.status, JSON.stringify(detail), updated.revision, now, lesson.id, changeId),
       cancelObsoleteStatement(db, lesson.id, changeId, now),
       ...jobsForLessonEvent(event, updated, w, now).map(j => enqueueStatement(db, j, {workspaceId: w.id, lessonId: lesson.id, revision: updated.revision, changeId, now}))
@@ -395,7 +395,7 @@ export async function instructorApi(request, db, env = {}) {
         (SELECT min(start_ms) FROM lessons l WHERE l.learner_id=r.id AND l.status IN ('requested','confirmed') AND l.start_ms>?) next_lesson_ms,
         (SELECT max(start_ms) FROM lessons l WHERE l.learner_id=r.id AND l.status='completed') last_lesson_ms,
         (SELECT coalesce(sum(price_pence),0) FROM lessons l WHERE l.learner_id=r.id AND l.status='completed' AND l.payment_status='unpaid') unpaid_pence
-        FROM learner_records r WHERE r.workspace_id=? AND r.status=? ORDER BY r.name COLLATE NOCASE`).bind(now, w.id, status).all()).results;
+        FROM learner_records r WHERE r.workspace_id=? AND r.status=? ORDER BY lower(r.name)`).bind(now, w.id, status).all()).results;
       return json({learners: rows.map(r => ({...learnerOut(r), next_lesson_ms: r.next_lesson_ms, last_lesson_ms: r.last_lesson_ms, unpaid_pence: r.unpaid_pence}))});
     }
     const learnerInput = (b, partial) => {
@@ -529,7 +529,7 @@ export async function instructorApi(request, db, env = {}) {
       if (!seg[2] && method === 'GET') {
         const [events, report, policy, learner] = await Promise.all([
           db.prepare('SELECT action, actor_role, from_status, to_status, detail, revision, created_ms FROM lesson_events WHERE lesson_id=? ORDER BY created_ms, revision').bind(l.id).all(),
-          db.prepare('SELECT p.*, ? lesson_start_ms FROM lesson_reports p WHERE lesson_id=?').bind(l.start_ms, l.id).first(),
+          db.prepare('SELECT p.*, CAST(? AS BIGINT) lesson_start_ms FROM lesson_reports p WHERE lesson_id=?').bind(l.start_ms, l.id).first(),
           l.policy_version_id ? db.prepare('SELECT id, version, notice_hours, policy_text FROM policy_versions WHERE id=?').bind(l.policy_version_id).first() : null,
           learnerIn(w, l.learner_id)
         ]);
@@ -578,21 +578,21 @@ export async function instructorApi(request, db, env = {}) {
           const observations = str(b.observations, 4000), goals = str(b.next_goals, 2000);
           if (existing) await run([db.prepare('UPDATE lesson_reports SET skills=?, observations=?, next_goals=?, updated_ms=? WHERE id=?').bind(skills, observations, goals, now, existing.id)]);
           else await run([db.prepare('INSERT INTO lesson_reports (id,workspace_id,lesson_id,learner_id,skills,observations,next_goals,updated_ms) VALUES (?,?,?,?,?,?,?,?)').bind(newId(), w.id, l.id, l.learner_id, skills, observations, goals, now)]);
-          return json({report: reportOut(await db.prepare('SELECT p.*, ? lesson_start_ms FROM lesson_reports p WHERE lesson_id=?').bind(l.start_ms, l.id).first())});
+          return json({report: reportOut(await db.prepare('SELECT p.*, CAST(? AS BIGINT) lesson_start_ms FROM lesson_reports p WHERE lesson_id=?').bind(l.start_ms, l.id).first())});
         }
         if ((seg[3] === 'publish' || seg[3] === 'withdraw') && method === 'POST') {
           if (!existing) fail(404, 'Write the report first.');
           const publish = seg[3] === 'publish';
           if (publish && !existing.observations && !existing.next_goals && existing.skills === '[]') fail(400, 'Add at least one skill, observation or goal before sharing.');
           await run([db.prepare('UPDATE lesson_reports SET status=?, published_ms=?, updated_ms=? WHERE id=?').bind(publish ? 'published' : 'draft', publish ? now : null, now, existing.id), audit(w.id, 'instructor', publish ? 'report.published' : 'report.withdrawn', 'report', existing.id)]);
-          return json({report: reportOut(await db.prepare('SELECT p.*, ? lesson_start_ms FROM lesson_reports p WHERE lesson_id=?').bind(l.start_ms, l.id).first())});
+          return json({report: reportOut(await db.prepare('SELECT p.*, CAST(? AS BIGINT) lesson_start_ms FROM lesson_reports p WHERE lesson_id=?').bind(l.start_ms, l.id).first())});
         }
       }
     }
     // ----- enquiries -----
     if (path === '/api/w/enquiries' && method === 'GET') {
       const status = url.searchParams.get('status');
-      const rows = (await db.prepare(`SELECT e.*, (e.user_id IS NOT NULL) has_account FROM enquiries e WHERE e.workspace_id=? AND (? IS NULL OR e.status=?) ORDER BY e.created_ms DESC LIMIT 200`).bind(w.id, status || null, status || null).all()).results;
+      const rows = (await db.prepare(`SELECT e.*, (e.user_id IS NOT NULL) has_account FROM enquiries e WHERE e.workspace_id=? AND (CAST(? AS TEXT) IS NULL OR e.status=?) ORDER BY e.created_ms DESC LIMIT 200`).bind(w.id, status || null, status || null).all()).results;
       const counts = (await db.prepare('SELECT status, count(*) n FROM enquiries WHERE workspace_id=? GROUP BY status').bind(w.id).all()).results;
       return json({enquiries: rows.map(r => ({...r, has_account: !!r.has_account, user_id: undefined})), counts});
     }
@@ -653,7 +653,7 @@ export async function instructorApi(request, db, env = {}) {
         q(`${base} AND l.status='requested' AND l.start_ms>? ORDER BY l.start_ms`, w.id, now),
         q(`${base} AND l.status='cancelled' AND l.updated_ms>? ORDER BY l.updated_ms DESC LIMIT 10`, w.id, now - 14 * DAY),
         db.prepare(`SELECT count(*) n, coalesce(sum(price_pence),0) pence FROM lessons WHERE workspace_id=? AND status='completed' AND payment_status='unpaid'`).bind(w.id).first(),
-        q(`SELECT r.id, r.name, (SELECT max(start_ms) FROM lessons l WHERE l.learner_id=r.id AND l.status='completed') last_lesson_ms FROM learner_records r WHERE r.workspace_id=? AND r.status='active' AND NOT EXISTS (SELECT 1 FROM lessons l WHERE l.learner_id=r.id AND l.status IN ('requested','confirmed') AND l.start_ms>?) ORDER BY r.name COLLATE NOCASE LIMIT 20`, w.id, now),
+        q(`SELECT r.id, r.name, (SELECT max(start_ms) FROM lessons l WHERE l.learner_id=r.id AND l.status='completed') last_lesson_ms FROM learner_records r WHERE r.workspace_id=? AND r.status='active' AND NOT EXISTS (SELECT 1 FROM lessons l WHERE l.learner_id=r.id AND l.status IN ('requested','confirmed') AND l.start_ms>?) ORDER BY lower(r.name) LIMIT 20`, w.id, now),
         q(`${base} AND l.status='completed' AND l.start_ms>? AND NOT EXISTS (SELECT 1 FROM lesson_reports p WHERE p.lesson_id=l.id) ORDER BY l.start_ms DESC LIMIT 10`, w.id, now - 30 * DAY),
         q(`SELECT p.id, p.lesson_id, r.name learner_name, l.start_ms lesson_start_ms FROM lesson_reports p JOIN lessons l ON l.id=p.lesson_id JOIN learner_records r ON r.id=p.learner_id WHERE p.workspace_id=? AND p.status='draft' ORDER BY l.start_ms DESC LIMIT 10`, w.id),
         db.prepare(`SELECT count(*) n FROM lesson_reports WHERE workspace_id=? AND status='published'`).bind(w.id).first(),

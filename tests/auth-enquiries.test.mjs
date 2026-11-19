@@ -2,7 +2,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {handle} from '../app.mjs';
-import {database} from '../server.mjs';
+import {database} from './db.mjs';
 import {processJobs} from '../lib/jobs.mjs';
 
 const ORIGIN = 'https://school.test';
@@ -65,7 +65,7 @@ test('public website pages render server-side with business details', async () =
     assert.match(contact.data, /value="Block of 10 lessons" selected/);
     assert.equal((await call(db, env, '/nope')).status, 404);
     assert.equal((await call(db, env, '/account')).data, '<html>app</html>');
-  } finally { db.close(); }
+  } finally { await db.close(); }
 });
 
 test('Google sign-in: state, nonce, verified email and session cookie', async () => {
@@ -96,7 +96,7 @@ test('Google sign-in: state, nonce, verified email and session cookie', async ()
     assert.equal((await call(db, env, '/api/session', {cookie: ok.cookie})).data.user, null, 'logout ends the session');
     const {env: unconfigured} = makeEnv({GOOGLE_CLIENT_ID: ''});
     assert.equal((await call(db, unconfigured, '/auth/google/start')).status, 503);
-  } finally { db.close(); }
+  } finally { await db.close(); }
 });
 
 test('identity headers cannot be spoofed unless the platform is trusted', async () => {
@@ -109,7 +109,7 @@ test('identity headers cannot be spoofed unless the platform is trusted', async 
     const other = await signIn(db, env, google, {sub: 'intruder', email: 'intruder@example.com'});
     const r = await call(db, env, '/api/w/onboarding', {method: 'POST', cookie: other.cookie, body: {}});
     assert.equal(r.status, 403, 'non-owners cannot create a workspace on a business deployment');
-  } finally { db.close(); }
+  } finally { await db.close(); }
 });
 
 test('website enquiries reach the instructor, resist spam and convert to linked learners', async () => {
@@ -154,7 +154,7 @@ test('website enquiries reach the instructor, resist spam and convert to linked 
     assert.equal(converted.data.learner.linked, true);
     assert.equal((await call(db, env, `/api/w/enquiries/${leadEnquiry.id}/convert`, {method: 'POST', cookie: owner, body: {}})).status, 409);
     assert.equal((await call(db, env, '/api/learner/home', {cookie: lead.cookie})).data.records.length, 1);
-  } finally { db.close(); }
+  } finally { await db.close(); }
 });
 
 test('signing in with Google links an existing learner record by verified email', async () => {
@@ -171,5 +171,5 @@ test('signing in with Google links an existing learner record by verified email'
     assert.equal((await call(db, env, '/api/learner/home', {cookie: stranger.cookie})).data.records.length, 0);
     const ownerLogin = await signIn(db, env, google, {sub: 'owner-sub', email: 'owner@school.test'});
     assert.equal(ownerLogin.cb.headers.get('location'), '/app', 'the owner lands in the admin');
-  } finally { db.close(); }
+  } finally { await db.close(); }
 });

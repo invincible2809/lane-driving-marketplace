@@ -28,7 +28,8 @@ Emails are in **preview mode** by default: nothing is sent; every email is visib
 ## Tests
 
 ```sh
-npm test          # 36 unit + integration tests (domain rules, API, auth, enquiries, Vercel/libSQL, build)
+npm test          # unit + integration tests on SQLite (PostgreSQL tests skip)
+TEST_DATABASE_URL=postgres://user@host/db npm run test:postgres   # same integration tests + concurrency checks on PostgreSQL
 npm run check     # syntax check of entry points and browser scripts
 npm run test:e2e  # Chromium journeys at 390×844; set AXE_PATH=/path/to/axe.min.js for WCAG checks
 npm run build     # dist/server/index.js (Cloudflare Worker) + wrangler.json + migrations
@@ -41,9 +42,10 @@ npm run build     # dist/server/index.js (Cloudflare Worker) + wrangler.json + m
 - `auth.mjs` — Google OpenID Connect (authorisation code + PKCE, state, nonce, verified email) and server-side sessions (only a SHA-256 of the session token is stored; cookie is `HttpOnly`, `SameSite=Lax`, `Secure` + `__Host-` on HTTPS).
 - `app.mjs` — router shared by the Node dev server and the Worker. `worker-entry.mjs` adds the cron trigger.
 - `public/site/public.css` — the public website's styles; `app.css` holds the shared tokens and the portal. Fonts in `public/site/fonts` are Archivo and Atkinson Hyperlegible (SIL Open Font License), self-hosted because the content security policy only allows same-origin sources.
-- `drizzle/` — append-only SQL migrations (SQLite / Cloudflare D1).
+- `migrations-pg/` — PostgreSQL (Neon) schema, used on Vercel. `drizzle/` — SQLite migrations, used locally (and for Turso/D1).
+- `lib/pg-db.mjs`, `lib/libsql-db.mjs` — database adapters; the app's SQL runs unchanged on SQLite and PostgreSQL.
 
-**Double-booking protection.** Database triggers refuse any lesson or slot hold that overlaps another active lesson, an unexpired hold, a blocked period, or the travel buffer — so two simultaneous requests cannot both succeed. Learners get a 10-minute hold while they review the details and cancellation terms; the accepted terms version is stored with the booking.
+**Double-booking protection.** On PostgreSQL (Neon) each booking trigger first takes a per-instructor transaction lock, so simultaneous bookings are checked one after another. Database triggers refuse any lesson or slot hold that overlaps another active lesson, an unexpired hold, a blocked period, or the travel buffer — so two simultaneous requests cannot both succeed. Learners get a 10-minute hold while they review the details and cancellation terms; the accepted terms version is stored with the booking.
 
 **Reminders.** 48 h and 24 h emails are durable jobs with unique keys. Rescheduling or cancelling cancels the old jobs; a stale job that still runs is discarded because the lesson revision changed. Jobs left mid-run are re-claimed after a 5-minute lease; a message already marked sent is never resent, and the provider receives a stable idempotency key.
 
@@ -66,7 +68,7 @@ For showing the product, set **`DEMO_MODE=true`**. The site then:
 
 Steps:
 1. Vercel → *Add New → Project* → import this repository (branch `claude/driving-instructor-admin-ripn2y`), Framework Preset **Other**.
-2. Project → *Storage* → *Marketplace* → **Turso Cloud** → create a free database and connect it (the site needs a hosted database because Vercel does not keep files).
+2. Project → *Storage* → **Neon** (Postgres) → create a free database and connect it to the project (the site needs a hosted database because Vercel does not keep files). This adds `DATABASE_URL`; the tables are created automatically on each deploy.
 3. Project → *Settings → Environment Variables* → add `DEMO_MODE` = `true`.
 4. Deploy (or *Redeploy* after adding the database and variable). Open the `*.vercel.app` address.
 
@@ -74,12 +76,12 @@ The free Hobby plan is fine for a demo. Do not turn on demo mode for a site with
 
 ## Deploying on Vercel
 
-You need: a GitHub account (this repo), a Vercel account, and a Turso database (hosted SQLite; added from Vercel's Marketplace). Vercel has no permanent disk, so the database must be hosted.
+You need: a GitHub account (this repo), a Vercel account, and a **Neon** Postgres database (added from Vercel's Storage tab). Vercel has no permanent disk, so the database must be hosted. Turso (hosted SQLite) is also supported as an alternative: set `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` instead of `DATABASE_URL`.
 
 > **Plan note:** Vercel's free Hobby plan is for non-commercial personal use. A business website such as SRK's should use the **Pro** plan. Check Vercel's current terms.
 
 1. **Import the project.** Vercel dashboard → *Add New → Project* → import `lane-driving-marketplace`, branch `claude/driving-instructor-admin-ripn2y` (or `main` after merging). Leave *Framework Preset* as **Other**. `vercel.json` already sets the install, build and output settings.
-2. **Add the database.** Project → *Storage* → *Marketplace* → **Turso Cloud** → create a database and connect it to the project. This adds `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`. Migrations run automatically on every build.
+2. **Add the database.** Project → *Storage* → **Neon** → create a database and connect it to the project (Production and Preview). This adds `DATABASE_URL` (the pooled connection). Migrations in `migrations-pg/` run automatically on every build.
 3. **Set environment variables** (Project → *Settings → Environment Variables*). Use `.env.example` as the list. At minimum:
    - `APP_URL` — e.g. `https://srkdrivingschool.co.uk` (or your `*.vercel.app` address at first)
    - `OWNER_EMAILS` — Shahrukh's Google address
@@ -90,14 +92,14 @@ You need: a GitHub account (this repo), a Vercel account, and a Turso database (
 5. **Reminder timing.** Background work (reminders, emails, expired holds) runs (a) after ordinary site visits, at most once a minute, (b) from the daily Vercel cron in `vercel.json`, and (c) — recommended — from a free external scheduler such as cron-job.org: every 10 minutes send `POST https://<your domain>/api/jobs/run` with header `Authorization: Bearer <JOB_SECRET>`. On the Pro plan you can instead change the cron schedule in `vercel.json` to `*/10 * * * *`.
 6. **Domain.** Project → *Settings → Domains* → add `srkdrivingschool.co.uk` and follow the DNS instructions. Do this only after checking the site on its `*.vercel.app` address. Remember to update `APP_URL` and the Google redirect URI when the domain changes. Google sign-in works only on the address registered with Google, not on preview deployment URLs.
 
-Manual migration, if ever needed: `TURSO_DATABASE_URL=... TURSO_AUTH_TOKEN=... npm run migrate`.
+Manual migration, if ever needed: `DATABASE_URL=postgres://... npm run migrate`.
 
 An alternative Cloudflare Workers build is still available (`npm run build`, output in `dist/`), but Vercel is the supported path.
 
 ## Backups and restore
 
-- Turso keeps point-in-time history; restore from the Turso dashboard or CLI (`turso db create <new-name> --from-db <db> --timestamp <ISO time>`), then point `TURSO_DATABASE_URL` at the restored database. Check your Turso plan's retention period.
-- Take a regular off-site copy as well: `turso db shell <db> .dump > backup-$(date +%F).sql`.
+- Neon keeps a restore window (point-in-time restore); restore from the Neon console (*Branches → Restore*). Check your Neon plan's retention period.
+- Take a regular off-site copy as well: `pg_dump "$DATABASE_URL" > backup-$(date +%F).sql`, and restore with `psql "$NEW_DATABASE_URL" -f backup.sql`.
 - Locally the database is `.data/lane.sqlite`; copy the file while the server is stopped.
 
 ## Launch blockers (not done)
@@ -107,4 +109,4 @@ An alternative Cloudflare Workers build is still available (`npm run build`, out
 - **Business content to confirm** in `business.config.mjs`: prices, office vs lesson hours (Maps says 09:30–19:00 / 09:00–14:00; the current site says 9am–9pm 7 days), automatic-only vs "manual or automatic", area spellings, ADI wording/number. Statistics such as "500+ learners" and pass rates from the current site were deliberately **not** copied because they could not be verified.
 - **Privacy notice and terms** are drafts with `[TO CONFIRM]` items (legal entity, ICO registration, retention periods, controller/processor roles).
 - **Not built yet:** subscription billing (Phase B), waiting-list automation (Phase C), data export/deletion and retention jobs, error monitoring, cookie banner (only essential cookies are used today), SMS/WhatsApp, Google/Microsoft calendar sync, photo gallery.
-- Vercel + Turso accounts, environment variables and DNS cut-over from the existing site (not done; nothing has been deployed).
+- Vercel + Neon accounts, environment variables and DNS cut-over from the existing site (not done; nothing has been deployed).
