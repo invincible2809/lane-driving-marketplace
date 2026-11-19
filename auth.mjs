@@ -64,6 +64,16 @@ async function autoLinkLearner(db, env, user) {
     AND (SELECT count(*) FROM learner_records WHERE workspace_id=? AND lower(email)=? AND user_id IS NULL AND status='active')=1
     AND NOT EXISTS (SELECT 1 FROM learner_records WHERE workspace_id=? AND user_id=?)`).bind(user.id, Date.now(), w.id, email, w.id, email, w.id, user.id).run();
 }
+// Record the user and start a session. Returns the Set-Cookie header value.
+export async function createSession(db, env, user, provider) {
+  const now = Date.now();
+  await db.prepare(`INSERT INTO users (id,provider,email,email_verified,name,created_ms,last_login_ms) VALUES (?,?,?,1,?,?,?)
+    ON CONFLICT(id) DO UPDATE SET email=excluded.email, name=excluded.name, last_login_ms=excluded.last_login_ms`).bind(user.id, provider, user.email, user.name || '', now, now).run();
+  const token = random();
+  await db.prepare('INSERT INTO sessions (token_hash,user_id,expires_ms,created_ms) VALUES (?,?,?,?)').bind(await sha256Hex(token), user.id, now + SESSION_DAYS * 86400000, now).run();
+  return sessionCookie(env, token, SESSION_DAYS * 86400);
+}
+export {redirect as authRedirect, page as authPage};
 export async function authRoutes(request, db, env) {
   const url = new URL(request.url), path = url.pathname;
   if (!path.startsWith('/auth/')) return null;
@@ -98,15 +108,12 @@ export async function authRoutes(request, db, env) {
     if (!valid) return page('Sign-in failed', 'The sign-in response could not be verified. Please try again.', 401);
     if (claims.email_verified !== true || !claims.email) return page('Email not verified', 'Your Google account email address must be verified to sign in.', 403);
     const user = {id: 'google:' + claims.sub, email: String(claims.email).toLowerCase(), name: String(claims.name || '').slice(0, 100)};
-    await db.prepare(`INSERT INTO users (id,provider,email,email_verified,name,created_ms,last_login_ms) VALUES (?,?,?,1,?,?,?)
-      ON CONFLICT(id) DO UPDATE SET email=excluded.email, name=excluded.name, last_login_ms=excluded.last_login_ms`).bind(user.id, 'google', user.email, user.name, now, now).run();
-    const token = random();
-    await db.prepare('INSERT INTO sessions (token_hash,user_id,expires_ms,created_ms) VALUES (?,?,?,?)').bind(await sha256Hex(token), user.id, now + SESSION_DAYS * 86400000, now).run();
+    const cookie = await createSession(db, env, user, 'google');
     await autoLinkLearner(db, env, user);
     const owner = await db.prepare('SELECT 1 FROM workspaces WHERE owner_id=?').bind(user.id).first();
     const isOwnerEmail = String(env.OWNER_EMAILS || '').toLowerCase().split(',').map(s => s.trim()).includes(user.email);
     const next = saved.next_path === '/account' && (owner || isOwnerEmail) ? '/app' : saved.next_path;
-    return redirect(next, {'Set-Cookie': sessionCookie(env, token, SESSION_DAYS * 86400)});
+    return redirect(next, {'Set-Cookie': cookie});
   }
   if (path === '/auth/logout' && request.method === 'POST') {
     const origin = request.headers.get('origin');

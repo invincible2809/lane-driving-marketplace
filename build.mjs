@@ -18,7 +18,7 @@ function load(path) {
   });
   if (/^import\s/m.test(code)) throw new Error(`Unsupported import form in ${path}`);
   const exports = new Set();
-  code = code.replace(/^export\s*\{([^}]*)\};?\s*$/gm, (_, names) => { names.split(',').map(n => n.trim()).filter(Boolean).forEach(n => exports.add(n)); return ''; });
+  code = code.replace(/^export\s*\{([^}]*)\};?\s*$/gm, (_, names) => { names.split(',').map(n => n.trim()).filter(Boolean).forEach(n => { const [orig, alias] = n.split(/\s+as\s+/); exports.add(alias ? `${alias}: ${orig}` : orig); }); return ''; });
   for (const m of code.matchAll(/^export\s+(?:async\s+)?(?:function\*?|const|let|class)\s+([A-Za-z_$][\w$]*)/gm)) exports.add(m[1]);
   code = code.replace(/^export\s+default\s+([A-Za-z_$][\w$]*);?\s*$/gm, (_, n) => { exports.add('default: ' + n); return ''; });
   code = code.replace(/^export\s+/gm, '');

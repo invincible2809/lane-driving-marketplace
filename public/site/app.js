@@ -54,7 +54,7 @@ function onSubmit(form, handler) {
     finally { if (btn) btn.disabled = false; }
   });
 }
-function signInHref(next) { return state.session?.site?.google_sign_in ? `/auth/google/start?next=${encodeURIComponent(next)}` : '/signin-with-chatgpt'; }
+function signInHref(next) { return `/auth/sign-in?next=${encodeURIComponent(next)}`; }
 function header() {
   const s = state.session, who = $('#who');
   const name = s?.workspace?.business_name || s?.site?.business_name;
@@ -74,6 +74,12 @@ const go = hash => { if (location.hash === hash) router(); else location.hash = 
 async function boot() {
   try { state.session = await api('session'); } catch (e) { render(errorBox(e)); return; }
   if (state.session.workspace) state.tz = state.session.workspace.timezone;
+  if (state.session.site?.demo) {
+    const bar = document.createElement('div');
+    bar.className = 'demo-banner'; bar.setAttribute('role', 'note');
+    bar.innerHTML = '<strong>Demo.</strong> Sample data only. No real lessons are booked and no emails are sent. <a href="/">Back to the website</a>';
+    document.querySelector('.top').after(bar);
+  }
   header();
   window.addEventListener('hashchange', router);
   router();
@@ -105,7 +111,7 @@ function signedOut() {
   const learner = state.mode === 'learner';
   render(`<div class="card"><h1>${learner ? 'Your lessons and progress' : 'Instructor sign in'}</h1>
    <p>${learner ? 'Sign in with your Google account to see your upcoming lessons, book times and read the progress reports your instructor shares with you.' : 'Sign in to manage your diary, learners and enquiries.'}</p>
-   <p><a class="btn" href="${signInHref(learner ? '/account' : '/app')}">${state.session.site?.google_sign_in ? 'Sign in with Google' : 'Sign in'}</a></p>
+   <p><a class="btn" href="${signInHref(learner ? '/account' : '/app')}">${state.session.site?.demo ? 'Try the demo' : state.session.site?.google_sign_in ? 'Sign in with Google' : 'Sign in'}</a></p>
    ${learner ? '<p class="small muted">New to us? Sign in and send an enquiry — once your instructor adds you, your lessons appear here. We only use your Google name and email address.</p>' : ''}</div>`, 'Sign in');
 }
 
@@ -187,7 +193,8 @@ async function dashboardView() {
    <section class="card" aria-labelledby="rp"><h2 id="rp">Progress reports</h2>${d.reports_due.length ? `<p>Lessons without a report:</p>${lessonList(d.reports_due)}` : '<p class="empty">No completed lessons are waiting for a report.</p>'}${d.draft_reports.length ? `<h3>Drafts not yet shared</h3><ul class="list">${d.draft_reports.map(r => `<li><a href="#/lessons/${r.lesson_id}">${esc(r.learner_name)} · ${day(r.lesson_start_ms)}</a> ${chip('draft', 'Draft')}</li>`).join('')}</ul>` : ''}<p class="small muted">${d.published_reports} shared with learners so far.</p></section>
    <section class="card" aria-labelledby="rc"><h2 id="rc">Recent cancellations</h2>${lessonList(d.recent_cancellations, 'No cancellations in the last 14 days.')}</section>
    <section class="card" aria-labelledby="nb"><h2 id="nb">Learners with no future lesson</h2>${d.learners_without_booking.length ? `<ul class="list">${d.learners_without_booking.map(r => `<li class="spread"><a href="#/learners/${r.id}">${esc(r.name)}</a><span class="small muted">${r.last_lesson_ms ? 'Last lesson ' + day(r.last_lesson_ms) : 'No lessons yet'}</span></li>`).join('')}</ul>` : '<p class="empty">Every active learner has a lesson booked.</p>'}</section>
-  </div>`, 'Today');
+  </div>
+  ${state.session.site?.demo ? '<form class="card" method="post" action="/auth/demo/reset"><h2>Demo</h2><p class="small muted">Put the sample data back to how it started, removing anything added during a demonstration.</p><button class="btn secondary" type="submit">Reset demo data</button></form>' : ''}`, 'Today');
 }
 
 // ---------- calendar ----------

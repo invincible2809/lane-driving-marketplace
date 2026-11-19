@@ -56,6 +56,22 @@ npm run build     # dist/server/index.js (Cloudflare Worker) + wrangler.json + m
 3. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (as a secret), `APP_URL` and `OWNER_EMAILS` (the instructor's Google address). Until `OWNER_EMAILS` lists an address, nobody can create the workspace.
 4. The instructor signs in at `/app` and completes setup. Learners sign in at `/account`; a learner whose Google email matches exactly one learner record is linked automatically. Otherwise they can send an enquiry, and the instructor links them with **Add as learner**, or sends an invitation link.
 
+## Quick demo on Vercel (no Google, no email setup)
+
+For showing the product, set **`DEMO_MODE=true`**. The site then:
+- offers one-click "Try as the instructor / learner" sign-in (no Google account or credentials needed);
+- creates sample data automatically on first visit, and the instructor dashboard has **Reset demo data**;
+- shows a "Demo site" banner on every page and tells search engines not to index it, so it never competes with the real srkdrivingschool.co.uk;
+- never sends email (messages are visible under Settings → Sent emails).
+
+Steps:
+1. Vercel → *Add New → Project* → import this repository (branch `claude/driving-instructor-admin-ripn2y`), Framework Preset **Other**.
+2. Project → *Storage* → *Marketplace* → **Turso Cloud** → create a free database and connect it (the site needs a hosted database because Vercel does not keep files).
+3. Project → *Settings → Environment Variables* → add `DEMO_MODE` = `true`.
+4. Deploy (or *Redeploy* after adding the database and variable). Open the `*.vercel.app` address.
+
+The free Hobby plan is fine for a demo. Do not turn on demo mode for a site with real learner data: anyone can sign in as the instructor.
+
 ## Deploying on Vercel
 
 You need: a GitHub account (this repo), a Vercel account, and a Turso database (hosted SQLite; added from Vercel's Marketplace). Vercel has no permanent disk, so the database must be hosted.

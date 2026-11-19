@@ -58,3 +58,46 @@ test('Vercel function on libSQL: migrations, sign-in, enquiries, booking conflic
   assert.ok('claimed' in cron.data);
   client.close();
 });
+
+test('demo mode on Vercel: sample data, one-click sign-in, banner, noindex, reset', async () => {
+  const {resetDemoFlag} = await import('../lib/demo.mjs');
+  const client = createClient({url: 'file:' + join(mkdtempSync(join(tmpdir(), 'lane-demo-')), 'db.sqlite')});
+  await migrate(client, migrationFiles());
+  __reset(); resetDemoFlag();
+  const env = {__LIBSQL_CLIENT: client, TURSO_DATABASE_URL: 'file:unused', APP_URL: ORIGIN, DEMO_MODE: 'true'};
+  const call = async (path, {method = 'GET', cookie, form, e = env} = {}) => {
+    const h = new Headers(); if (cookie) h.set('cookie', cookie);
+    if (form) h.set('content-type', 'application/x-www-form-urlencoded');
+    const r = await fetchHandler(new Request(ORIGIN + path, {method, headers: h, body: form ? new URLSearchParams(form).toString() : undefined}), e);
+    return {status: r.status, headers: r.headers, data: (r.headers.get('content-type') || '').includes('json') ? await r.json() : await r.text()};
+  };
+  const home = await call('/');
+  assert.match(home.data, /class="demo-banner"/);
+  assert.match(home.data, /noindex/);
+  assert.equal(home.headers.get('x-robots-tag'), 'noindex, nofollow');
+  assert.match((await call('/robots.txt')).data, /Disallow: \/\n/);
+  assert.match((await call('/auth/sign-in?next=/app')).data, /Try as the instructor/);
+  const signIn = async who => { const r = await call('/auth/demo', {method: 'POST', form: {as: who}}); return {location: r.headers.get('location'), cookie: r.headers.get('set-cookie').split(';')[0]}; };
+  const inst = await signIn('instructor');
+  assert.equal(inst.location, '/app');
+  const dash = (await call('/api/w/dashboard', {cookie: inst.cookie})).data;
+  assert.equal(dash.new_enquiries.count, 2, 'sample enquiries were created');
+  assert.equal(dash.active_learners, 2);
+  const amelia = await signIn('learner');
+  assert.equal(amelia.location, '/account');
+  const learnerHome = (await call('/api/learner/home', {cookie: amelia.cookie})).data;
+  assert.equal(learnerHome.records[0].reports.length, 1);
+  assert.ok(!JSON.stringify(learnerHome).includes('Private demo note'));
+  // Changes made during a demo can be reset by the demo instructor only.
+  await fetchHandler(new Request(ORIGIN + '/api/w/learners', {method: 'POST', headers: {cookie: inst.cookie, 'content-type': 'application/json'}, body: JSON.stringify({name: 'Added During Demo', transmission: 'automatic'})}), env);
+  assert.equal((await call('/api/w/dashboard', {cookie: inst.cookie})).data.active_learners, 3);
+  assert.equal((await call('/auth/demo/reset', {method: 'POST', cookie: amelia.cookie})).status, 403);
+  assert.equal((await call('/auth/demo/reset', {method: 'POST', cookie: inst.cookie})).status, 302);
+  assert.equal((await call('/api/w/dashboard', {cookie: inst.cookie})).data.active_learners, 2, 'reset restores the sample data');
+  // Demo routes do not exist when demo mode is off.
+  const off = {...env, DEMO_MODE: 'false'};
+  assert.equal((await call('/auth/demo', {method: 'POST', form: {as: 'instructor'}, e: off})).status, 404);
+  assert.equal((await call('/auth/sign-in', {e: off})).status, 503);
+  assert.equal((await call('/', {e: off})).headers.get('x-robots-tag'), null);
+  client.close();
+});

@@ -183,7 +183,7 @@ export async function instructorApi(request, db, env = {}) {
   }
   if (path === '/api/session' && method === 'GET') {
     const site = await siteWorkspace(db, env);
-    const siteInfo = {business_name: site?.business_name || null, google_sign_in: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET)};
+    const siteInfo = {business_name: site?.business_name || null, google_sign_in: !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), demo: String(env.DEMO_MODE || '').toLowerCase() === 'true'};
     if (!user) return json({user: null, site: siteInfo});
     const w = await ownWorkspace();
     const links = (await db.prepare(`SELECT r.id learner_id, w.id workspace_id, w.business_name FROM learner_records r JOIN workspaces w ON w.id=r.workspace_id WHERE r.user_id=? AND r.status='active'`).bind(uid).all()).results;
